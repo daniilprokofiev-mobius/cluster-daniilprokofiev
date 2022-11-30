@@ -1,6 +1,6 @@
 /*
  * TeleStax, Open Source Cloud Communications
- * Copyright 2011-2014, Telestax Inc and individual contributors
+ * Copyright 2011-2017, Telestax Inc and individual contributors
  * by the @authors tag.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -15,14 +15,14 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
- *
- * This file incorporates work covered by the following copyright contributed under the GNU LGPL : Copyright 2007-2011 Red Hat.
  */
 
 package org.restcomm.timers;
 
-import java.io.Serializable;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -33,26 +33,26 @@ import java.util.concurrent.TimeUnit;
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 
-import org.apache.log4j.Logger;
-import org.jboss.cache.Fqn;
-import org.jgroups.Address;
-import org.restcomm.cache.FqnWrapper;
+import org.restcomm.cluster.ClusteredID;
 import org.restcomm.cluster.DataRemovalListener;
 import org.restcomm.cluster.FailOverListener;
-import org.restcomm.cluster.MobicentsCluster;
-import org.restcomm.cluster.cache.ClusteredCacheData;
-import org.restcomm.cluster.election.ClientLocalListenerElector;
-import org.restcomm.timers.cache.FaultTolerantSchedulerCacheData;
+import org.restcomm.cluster.RestcommCluster;
+import org.restcomm.cluster.RestcommClusterFactory;
 import org.restcomm.timers.cache.TimerTaskCacheData;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * 
  * @author martins
+ * @author András Kőkuti
+ * @author yulian.oifa
  *
  */
 public class FaultTolerantScheduler {
 
-	private static final Logger logger = Logger.getLogger(FaultTolerantScheduler.class);
+	private static final Logger logger = LogManager.getLogger(FaultTolerantScheduler.class);
 	
 	/**
 	 * the executor of timer tasks
@@ -67,20 +67,16 @@ public class FaultTolerantScheduler {
 	/**
 	 * the local running tasks. NOTE: never ever check for values, class instances may differ due cache replication, ALWAYS use keys.
 	 */
-	private final ConcurrentHashMap<Serializable, TimerTask> localRunningTasks = new ConcurrentHashMap<Serializable, TimerTask>();
+	private final ConcurrentHashMap<ClusteredID<?>, TimerTask> localRunningTasks = new ConcurrentHashMap<ClusteredID<?>, TimerTask>();
+
+	
 	
 	/**
 	 * the timer task factory associated with this scheduler
 	 */
 	private TimerTaskFactory timerTaskFactory;
 	
-	/**
-	 * the base fqn used to store tasks data in restcomm cluster's cache
-	 */
-	@SuppressWarnings("unchecked")
-	private final Fqn baseFqn;
-	
-	private FaultTolerantSchedulerCacheData cacheData;
+	//private FaultTolerantSchedulerCacheData cacheData;
 	
 	/**
 	 * the scheduler name
@@ -90,7 +86,12 @@ public class FaultTolerantScheduler {
 	/**
 	 * the restcomm cluster 
 	 */
-	private final MobicentsCluster cluster;
+	private final RestcommCluster cluster;
+	
+	/**
+	 * the restcomm cluster factory 
+	 */
+	private final RestcommClusterFactory clusterFactory;
 	
 	/**
 	 * listener for fail over events in restcomm cluster
@@ -102,12 +103,11 @@ public class FaultTolerantScheduler {
 	 * @param name
 	 * @param corePoolSize
 	 * @param cluster
-	 * @param priority
 	 * @param txManager
 	 * @param timerTaskFactory
 	 */
-	public FaultTolerantScheduler(String name, int corePoolSize, MobicentsCluster cluster, byte priority, TransactionManager txManager, TimerTaskFactory timerTaskFactory) {
-		this(name, corePoolSize, cluster, priority, txManager, timerTaskFactory, 0, Executors.defaultThreadFactory());
+	public FaultTolerantScheduler(String name, int corePoolSize, RestcommClusterFactory clusterFactory, TransactionManager txManager, TimerTaskFactory timerTaskFactory) {
+		this(name, corePoolSize, clusterFactory, txManager, timerTaskFactory, 0, Executors.defaultThreadFactory());		
 	}
 
     /**
@@ -115,13 +115,12 @@ public class FaultTolerantScheduler {
      * @param name
      * @param corePoolSize
      * @param cluster
-     * @param priority
      * @param txManager
      * @param timerTaskFactory
      * @param threadFactory
      */
-    public FaultTolerantScheduler(String name, int corePoolSize, MobicentsCluster cluster, byte priority, TransactionManager txManager, TimerTaskFactory timerTaskFactory, ThreadFactory threadFactory) {
-        this(name, corePoolSize, cluster, priority, txManager, timerTaskFactory, 0, threadFactory);
+    public FaultTolerantScheduler(String name, int corePoolSize, RestcommClusterFactory clusterFactory, TransactionManager txManager, TimerTaskFactory timerTaskFactory, ThreadFactory threadFactory) {
+        this(name, corePoolSize, clusterFactory, txManager, timerTaskFactory, 0, threadFactory);
     }
 
     /**
@@ -129,13 +128,12 @@ public class FaultTolerantScheduler {
      * @param name
      * @param corePoolSize
      * @param cluster
-     * @param priority
      * @param txManager
      * @param timerTaskFactory
      * @param purgePeriod
      */
-	public FaultTolerantScheduler(String name, int corePoolSize, MobicentsCluster cluster, byte priority, TransactionManager txManager,TimerTaskFactory timerTaskFactory, int purgePeriod) {
-        this(name, corePoolSize, cluster, priority, txManager, timerTaskFactory, purgePeriod, Executors.defaultThreadFactory());
+	public FaultTolerantScheduler(String name, int corePoolSize, RestcommClusterFactory clusterFactory, TransactionManager txManager,TimerTaskFactory timerTaskFactory, int purgePeriod) {
+        this(name, corePoolSize, clusterFactory, txManager, timerTaskFactory, purgePeriod, Executors.defaultThreadFactory());
 	}
 
     /**
@@ -143,13 +141,13 @@ public class FaultTolerantScheduler {
      * @param name
      * @param corePoolSize
      * @param cluster
-     * @param priority
      * @param txManager
      * @param timerTaskFactory
      * @param purgePeriod
      * @param threadFactory
      */
-    public FaultTolerantScheduler(String name, int corePoolSize, MobicentsCluster cluster, byte priority, TransactionManager txManager,TimerTaskFactory timerTaskFactory, int purgePeriod, ThreadFactory threadFactory) {
+    public FaultTolerantScheduler(String name, int corePoolSize, RestcommClusterFactory clusterFactory, TransactionManager txManager,TimerTaskFactory timerTaskFactory, int purgePeriod, ThreadFactory threadFactory) {
+        clusterFactory.registerKnownClass(100, TimerTaskData.class);
         this.name = name;
         this.executor = new ScheduledThreadPoolExecutor(corePoolSize, threadFactory);
         if(purgePeriod > 0) {
@@ -166,17 +164,16 @@ public class FaultTolerantScheduler {
             };
             this.executor.scheduleWithFixedDelay(r, purgePeriod, purgePeriod, TimeUnit.MINUTES);
         }
-        this.baseFqn = Fqn.fromElements(name);
-        this.cluster = cluster;
+        
+        this.clusterFactory = clusterFactory;
+        this.cluster = clusterFactory.getCluster(name,false);
         this.timerTaskFactory = timerTaskFactory;
         this.txManager = txManager;
-        cacheData = new FaultTolerantSchedulerCacheData(new FqnWrapper(baseFqn),cluster);
-        if (cluster.isStarted()) {
-            cacheData.create();
-        }
-        clusterClientLocalListener = new ClientLocalListener(priority);
+        
+        clusterClientLocalListener = new ClientLocalListener();
         cluster.addFailOverListener(clusterClientLocalListener);
         cluster.addDataRemovalListener(clusterClientLocalListener);
+        cluster.startCluster(true);
     }
 
 	/**
@@ -184,14 +181,18 @@ public class FaultTolerantScheduler {
 	 * @param taskID
 	 * @return null if there is no such timer task data
 	 */
-	public TimerTaskData getTimerTaskData(Serializable taskID) {
-		TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, baseFqn, cluster);
-		if (timerTaskCacheData.exists()) {
-			return timerTaskCacheData.getTaskData();
+	public TimerTaskData getTimerTaskData(ClusteredID<?> taskID) {
+		TimerTask localTask = localRunningTasks.get(taskID);		
+		TimerTaskData timerTaskData = null;
+		if(localTask!=null)
+			timerTaskData =  localTask.getData();
+		
+		if(timerTaskData==null) {
+			TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster);
+			timerTaskData = timerTaskCacheData.getTaskData();
 		}
-		else {
-			return null;
-		}
+		
+		return timerTaskData;
 	}
 	
 	/**
@@ -206,7 +207,7 @@ public class FaultTolerantScheduler {
 	 * Retrieves local running tasks map.
 	 * @return
 	 */
-	ConcurrentHashMap<Serializable, TimerTask> getLocalRunningTasksMap() {
+	ConcurrentHashMap<ClusteredID<?>, TimerTask> getLocalRunningTasksMap() {
 		return localRunningTasks;
 	}
 	
@@ -225,7 +226,7 @@ public class FaultTolerantScheduler {
 	 * 
 	 * @return the local task if found, null otherwise
 	 */
-	public TimerTask getLocalRunningTask(Serializable taskId) {
+	public TimerTask getLocalRunningTask(ClusteredID<?> taskId) {
 		return localRunningTasks.get(taskId);
 	}
 	
@@ -235,14 +236,6 @@ public class FaultTolerantScheduler {
 	 */
 	public String getName() {
 		return name;
-	}
-	
-	/**
-	 *  Retrieves the priority of the scheduler as a client local listener of the restcomm cluster.
-	 * @return the priority
-	 */
-	public byte getPriority() {
-		return clusterClientLocalListener.getPriority();
 	}
 	
 	/**
@@ -274,7 +267,7 @@ public class FaultTolerantScheduler {
 	public void schedule(TimerTask task, boolean checkIfAlreadyPresent) {
 		
 		final TimerTaskData taskData = task.getData(); 
-		final Serializable taskID = taskData.getTaskID();
+		final ClusteredID<?> taskID = taskData.getTaskID();
 		task.setScheduler(this);
 		
 		if (logger.isDebugEnabled()) {
@@ -282,9 +275,11 @@ public class FaultTolerantScheduler {
 		}
 		
 		// store the task and data
-		final TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, baseFqn, cluster);
-		if (timerTaskCacheData.create()) {
-			timerTaskCacheData.setTaskData(taskData);
+		final TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster);
+		if (timerTaskCacheData.putIfAbsent(taskData)) {
+			if (logger.isInfoEnabled()) {
+				logger.info("Stored task data " + taskID);
+			}			
 		} else if(checkIfAlreadyPresent) {
             throw new IllegalStateException("timer task " + taskID + " already scheduled");
 		}
@@ -323,8 +318,7 @@ public class FaultTolerantScheduler {
 	 * @param taskID
 	 * @return the task canceled
 	 */
-	public TimerTask cancel(Serializable taskID) {
-		
+	public TimerTask cancel(ClusteredID<?> taskID) {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Canceling task with timer id "+taskID);
 		}
@@ -332,7 +326,7 @@ public class FaultTolerantScheduler {
 		TimerTask task = localRunningTasks.get(taskID);
 		if (task != null) {
 			// remove task data
-			new TimerTaskCacheData(taskID, baseFqn, cluster).remove();
+			new TimerTaskCacheData(taskID, cluster).deleteElement();
 
 			final SetTimerAfterTxCommitRunnable setAction = task.getSetTimerTransactionalAction();
 			if (setAction != null) {
@@ -367,19 +361,32 @@ public class FaultTolerantScheduler {
 			}		
 		}
 		else {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Not a local task");
+			}
 			// not found locally
 			// if there is a tx context there may be a set timer action there
 			if (txManager != null) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Txmanager not null");
+				}
 				try {
 					Transaction tx = txManager.getTransaction();
 					if (tx != null) {
+						if (logger.isDebugEnabled()) {
+							logger.debug("Tx not null");
+						}
 						TransactionContext txContext = TransactionContextThreadLocal.getTransactionContext();
 						if (txContext != null) {
+							if (logger.isDebugEnabled()) {
+								logger.debug("Tx context not null");
+							}
 							final AfterTxCommitRunnable r = txContext.remove(taskID);
 							if (r != null) {
+								logger.debug("removing");
 								task = r.task;
 								// remove from cluster
-								new TimerTaskCacheData(taskID, baseFqn, cluster).remove();
+								new TimerTaskCacheData(taskID, cluster).deleteElement();
 							}							
 						}											
 					}
@@ -393,15 +400,14 @@ public class FaultTolerantScheduler {
 		return task;
 	}
 	
-	void remove(Serializable taskID,boolean removeFromCache) {
-		if(logger.isDebugEnabled())
-		{
+	void remove(ClusteredID<?> taskID,boolean removeFromCache) {
+		if(logger.isDebugEnabled()) {
 			logger.debug("remove() : "+taskID+" - "+removeFromCache);
 		}
 		
 		localRunningTasks.remove(taskID);
 		if(removeFromCache)
-			new TimerTaskCacheData(taskID, baseFqn, cluster).remove();
+			new TimerTaskCacheData(taskID, cluster).deleteElement();
 	}
 	
 	/**
@@ -429,6 +435,7 @@ public class FaultTolerantScheduler {
 		cluster.removeFailOverListener(clusterClientLocalListener);
 		cluster.removeDataRemovalListener(clusterClientLocalListener);
 		
+		clusterFactory.stopCluster(name);
 		executor.shutdownNow();
 		localRunningTasks.clear();
 	}
@@ -439,100 +446,29 @@ public class FaultTolerantScheduler {
 	}
 	
 	public String toDetailedString() {		
-		return "FaultTolerantScheduler [ name = "+name+" , local tasks = "+localRunningTasks.size()+" , all tasks "+cacheData.getTaskIDs().size()+" ]";
+		return "FaultTolerantScheduler [ name = "+name+" , local tasks = "+localRunningTasks.size() + " ]";
 	}
 	
 	public void stop() {
 		this.shutdownNow();		
 	}
 	
+	
+	public String getLocalAddress() {
+		return cluster.getLocalAddress();
+	}
+	
 	private class ClientLocalListener implements FailOverListener, DataRemovalListener {
 
-		/**
-		 * the priority of the scheduler as a client local listener of the restcomm cluster
-		 */
-		private final byte priority;
-				
-		/**
-		 * @param priority
-		 */
-		public ClientLocalListener(byte priority) {
-			this.priority = priority;
-		}
-
 		/*
 		 * (non-Javadoc)
-		 * @see FailOverListener#getBaseFqn()
+		 * @see org.restcomm.cluster.DataRemovalListener#dataRemoved(org.jboss.cache.Fqn)
 		 */
-		@SuppressWarnings("unchecked")
-		public FqnWrapper getBaseFqn() {
-			return new FqnWrapper(baseFqn);
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * @see FailOverListener#getElector()
-		 */
-		public ClientLocalListenerElector getElector() {
-			return null;
-		}
-		
-		/* 
-		 * (non-Javadoc)
-		 * @see FailOverListener#getPriority()
-		 */
-		public byte getPriority() {
-			return priority;
-		}
-
-		/*
-		 * (non-Javadoc)
-		 * @see FailOverListener#failOverClusterMember(org.jgroups.Address)
-		 */
-		public void failOverClusterMember(Address address) {
-			
-		}
-		
-		/* 
-		 * (non-Javadoc)
-		 * @see FailOverListener#lostOwnership(ClusteredCacheData)
-		 */
-		public void lostOwnership(ClusteredCacheData clusteredCacheData) {
-			
-		}
-
-		/* 
-		 * (non-Javadoc)
-		 * @see FailOverListener#wonOwnership(ClusteredCacheData)
-		 */
-		public void wonOwnership(ClusteredCacheData clusteredCacheData) {
-			
+		public void dataRemoved(Object key) {			
 			if (logger.isDebugEnabled()) {
-				logger.debug("wonOwnership( clusterCacheData = "+clusteredCacheData+")");
+				logger.debug("remote notification dataRemoved, lastElement " + key);
 			}
-
-			try {
-				Serializable taskID = TimerTaskCacheData.getTaskID(clusteredCacheData);
-				TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, baseFqn, cluster);
-				recover(timerTaskCacheData.getTaskData());
-			}
-			catch (Throwable e) {
-				logger.error(e.getMessage(),e);
-			}
-		}
-		
-		/*
-		 * (non-Javadoc)
-		 * @see DataRemovalListener#dataRemoved(org.jboss.cache.Fqn)
-		 */
-		@SuppressWarnings("unchecked")
-		public void dataRemoved(FqnWrapper clusteredCacheDataFqnWrapper) {
-			Fqn clusteredCacheDataFqn = clusteredCacheDataFqnWrapper.getFqn();
-			Object lastElement = clusteredCacheDataFqn.getLastElement();
-			if (logger.isDebugEnabled()) {
-				logger.debug("remote notification dataRemoved( clusterCacheDataFqn = "+clusteredCacheDataFqn+"), lastElement " + lastElement);
-			}
-			final TimerTask task = localRunningTasks.remove(lastElement);
+			final TimerTask task = localRunningTasks.remove(key);
 			if (task != null) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("remote notification dataRemoved( task = "+task.getData().getTaskID()+" removed locally cancelling it");
@@ -547,6 +483,27 @@ public class FaultTolerantScheduler {
 		@Override
 		public String toString() {
 			return FaultTolerantScheduler.this.toString();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		/* 
+		 * (non-Javadoc)
+		 * @see org.restcomm.cluster.FailOverListener#failOverClusterMember(String)
+		 */
+		public void failOverClusterMember(String address) {
+			Map<ClusteredID<?>,TimerTaskData> allValues=(Map<ClusteredID<?>,TimerTaskData>)cluster.getAllElements();
+			Iterator<Entry<ClusteredID<?>,TimerTaskData>> valuesIterator=allValues.entrySet().iterator();
+			while(valuesIterator.hasNext()) {
+				Entry<ClusteredID<?>,TimerTaskData> curr=valuesIterator.next();
+				if(curr.getValue().getClusterAddress().equals(address)) {					
+					ClusteredID<?> taskID = curr.getKey();
+					curr.getValue().setClusterAddress(address);
+					TimerTaskCacheData cacheData=new TimerTaskCacheData(taskID, cluster);
+					cacheData.setTaskData(curr.getValue());
+					recover(curr.getValue());
+				}
+			}
 		}
 		
 	}

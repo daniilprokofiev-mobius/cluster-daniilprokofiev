@@ -1,43 +1,40 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat, Inc. and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * TeleStax, Open Source Cloud Communications
+ * Copyright 2011-2017, Telestax Inc and individual contributors
+ * by the @authors tag.
  *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
+ * This program is free software: you can redistribute it and/or modify
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation; either version 3 of
  * the License, or (at your option) any later version.
  *
- * This software is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 package org.restcomm.timers;
 
-import java.io.Serializable;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+
+import org.restcomm.cluster.ClusteredID;
 
 /**
  * 
  * The {@link TimerTask} data, which may be replicated in a cluster environment to support fail over.
  * 
  * @author martins
+ * @author yulian.oifa
  *
  */
-public class TimerTaskData implements Serializable {
-
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 8905073681622353718L;
-
+public class TimerTaskData implements Externalizable {
 	/**
 	 * the starting time of the associated timer task execution
 	 */
@@ -46,17 +43,30 @@ public class TimerTaskData implements Serializable {
 	/**
 	 * the period of the associated timer task execution, -1 means it is not a periodic task
 	 */
-	private final long period;
+	private long period;
 	
 	/**
 	 * the id of the associated timer task
 	 */
-	private final Serializable taskID;
+	private ClusteredID<?> taskID;
 	
 	/**
 	 * the strategy used in a periodic timer task, can be null if it is not a periodic timer task
 	 */
-	private final PeriodicScheduleStrategy periodicScheduleStrategy;
+	private PeriodicScheduleStrategy periodicScheduleStrategy;
+	
+	/**
+	 * the address of responsible node for this timer
+	 */
+	private String clusterAddress;
+	
+	/**
+	 * 
+	 * default constructor for serializers that need parameterless constructors
+	 */ 
+	public TimerTaskData() {
+		
+	}
 	
 	/**
 	 * 
@@ -64,11 +74,12 @@ public class TimerTaskData implements Serializable {
 	 * @param startTime
 	 * @param period
 	 */
-	public TimerTaskData(Serializable id, long startTime, long period, PeriodicScheduleStrategy periodicScheduleStrategy) {
+	public TimerTaskData(ClusteredID<?> id, long startTime, long period, PeriodicScheduleStrategy periodicScheduleStrategy,String clusterAddress) {
 		this.taskID = id;
 		this.startTime = startTime;
 		this.period = period;
 		this.periodicScheduleStrategy = periodicScheduleStrategy;
+		this.clusterAddress=clusterAddress;
 	}
 	
 	/**
@@ -99,8 +110,25 @@ public class TimerTaskData implements Serializable {
 	 * Retrieves the id of the associated timer task.
 	 * @return
 	 */
-	public Serializable getTaskID() {
+	public ClusteredID<?> getTaskID() {
 		return taskID;
+	}
+	
+	/**
+	 * Retrieves the address of responsible node for this task.
+	 * @return
+	 */
+	public String getClusterAddress() {
+		return clusterAddress;
+	}
+	
+	
+	/**
+	 * Sets the address of node responsible for this task.
+	 * @return
+	 */
+	public void setClusterAddress(String newAddress) {
+		this.clusterAddress=newAddress;
 	}
 	
 	/**
@@ -124,5 +152,31 @@ public class TimerTaskData implements Serializable {
 		else {
 			return false;
 		}
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		startTime=in.readLong();
+		period=in.readLong();
+		taskID=(ClusteredID<?>)in.readObject();
+		if(in.readByte()==0x00)
+			periodicScheduleStrategy=PeriodicScheduleStrategy.atFixedRate;
+		else
+			periodicScheduleStrategy=PeriodicScheduleStrategy.withFixedDelay;
+		
+		clusterAddress=in.readUTF();
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeLong(startTime);
+		out.writeLong(period);
+		out.writeObject(taskID);
+		if(periodicScheduleStrategy==PeriodicScheduleStrategy.atFixedRate)
+			out.writeByte(0);
+		else
+			out.writeByte(1);
+		
+		out.writeUTF(clusterAddress);
 	}
 }

@@ -1,0 +1,617 @@
+/*
+ * TeleStax, Open Source Cloud Communications
+ * Copyright 2011-2017, Telestax Inc and individual contributors
+ * by the @authors tag.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation; either version 3 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+package org.restcomm.cache.infinispan;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.transaction.TransactionManager;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.infinispan.notifications.Listener;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryCreated;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryModified;
+import org.infinispan.notifications.cachelistener.annotation.CacheEntryRemoved;
+import org.infinispan.notifications.cachelistener.event.CacheEntryCreatedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryModifiedEvent;
+import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
+import org.restcomm.cluster.ClusterElector;
+import org.restcomm.cluster.DataListener;
+import org.restcomm.cluster.DataRemovalListener;
+import org.restcomm.cluster.FailOverListener;
+import org.restcomm.cluster.RestcommCluster;
+import org.restcomm.cluster.data.CacheListener;
+import org.restcomm.cluster.data.ClusterOperation;
+import org.restcomm.cluster.data.RootTreeSegment;
+import org.restcomm.cluster.data.TreePutIfAbsentResult;
+import org.restcomm.cluster.data.TreeSegment;
+
+/**
+ * Listener that is to be used for cluster wide replication(meaning no buddy
+ * replication, no data gravitation). It will index activity on nodes marking
+ * current node as owner(this is semi-gravitation behavior (we don't delete, we
+ * just mark)). 
+ * 
+ * Indexing is only at node level, i.e., there is no
+ * reverse indexing, so it has to iterate through whole resource group data FQNs to check which
+ * nodes should be taken over.
+ * 
+ * @author <a href="mailto:baranowb@gmail.com">Bartosz Baranowski </a>
+ * @author martins
+ * @author András Kőkuti
+ * @author yulian.oifa
+ */
+
+@Listener
+public class InfinispanCluster implements RestcommCluster,CacheListener {
+	private static final Logger logger = LogManager.getLogger(InfinispanCluster.class);
+
+	private final AtomicReference<FailOverListener> failOverListener=new AtomicReference<FailOverListener>(null);
+	private AtomicReference<DataRemovalListener> dataRemovalListener=new AtomicReference<DataRemovalListener>(null);
+	private AtomicReference<DataListener> dataListener=new AtomicReference<DataListener>(null);
+	
+	private ConcurrentHashMap<ClusterOperation,AtomicLong> allOperations=new ConcurrentHashMap<ClusterOperation,AtomicLong>();
+	private ConcurrentHashMap<ClusterOperation,AtomicLong> operationTime=new ConcurrentHashMap<ClusterOperation,AtomicLong>();
+	private ConcurrentHashMap<ClusterOperation,AtomicLong> longOperations=new ConcurrentHashMap<ClusterOperation,AtomicLong>();
+	
+	private final InfinispanCache localCache;
+	private final TransactionManager txMgr;
+	private final ClusterElector elector;
+	private List<String> currentView;
+	
+	private boolean started;
+	private boolean useRemovalOnlyListener=false;
+	private ViewChangedListener viewListener;
+	private Boolean logStats;
+	
+	public InfinispanCluster(InfinispanCache localCache, ViewChangedListener viewListener, TransactionManager txMgr, ClusterElector elector,Boolean logStats) {
+		this.localCache = localCache;
+		this.txMgr = txMgr;
+		this.elector = elector;
+		this.viewListener=viewListener;
+		this.logStats=logStats;
+		
+		for(ClusterOperation operation:ClusterOperation.values()) {
+			allOperations.put(operation, new AtomicLong(0));
+			operationTime.put(operation, new AtomicLong(0));
+			longOperations.put(operation, new AtomicLong(0));
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#getLocalAddress()
+	 */
+	public String getLocalAddress() {	
+		return localCache.getLocalAddress();
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#isLocalMode()
+	 */
+	public boolean isLocalMode() {
+		return localCache.isLocalMode();
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#isSingleMember()
+	 */
+	public boolean isSingleMember() {
+		if (currentView != null)
+			return currentView.size()<2;
+		else
+			return true;	
+	}
+	
+	@SuppressWarnings("rawtypes")
+	@CacheEntryRemoved
+	public void cacheEntryRemoved(CacheEntryRemovedEvent event){
+		if (logger.isDebugEnabled()) {
+			logger.debug("cacheEntryRemoved : event[ "+ event +"]");
+		}
+
+		if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null && event.getOldValue()!=null )
+			 entryRemoved(event.getKey());
+	}
+
+	/**
+	 * 
+	 */
+	private void performTakeOver(String lostMember, String localAddress, boolean useLocalListenerElector) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("onViewChangeEvent : " + localAddress + " failing over lost member " + lostMember + ", useLocalListenerElector=" + useLocalListenerElector);
+		}
+			boolean createdTx = false;
+			boolean doRollback = true;
+			
+			try {
+				if (txMgr != null && txMgr.getTransaction() == null) {
+					txMgr.begin();
+					createdTx = true;
+				}
+				
+				
+				if (createdTx) {
+					txMgr.commit();
+					createdTx = false;
+				}
+				
+				if (txMgr != null && txMgr.getTransaction() == null) {
+					txMgr.begin();
+					createdTx = true;
+				}
+								
+				FailOverListener ftListener=failOverListener.get();
+				if(ftListener!=null)
+					ftListener.failOverClusterMember(lostMember);
+				
+				doRollback = false;
+				
+			} catch (Exception e) {
+				logger.error(e.getMessage(),e);
+				
+			} finally {
+				if (createdTx) {					
+					try {
+						if (!doRollback) {
+							txMgr.commit();
+						}
+						else {
+							txMgr.rollback();
+						}
+					} catch (Exception e) {
+						logger.error(e.getMessage(),e);
+					}
+				}
+			}
+
+	}
+
+	// LOCAL LISTENERS MANAGEMENT
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#addFailOverListener(org.restcomm.cluster.FailOverListener)
+	 */
+	public boolean addFailOverListener(FailOverListener localListener) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Adding local listener " + localListener);
+		}
+		
+		return failOverListener.compareAndSet(null, localListener);					
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#removeFailOverListener(org.restcomm.cluster.FailOverListener)
+	 */
+	public boolean removeFailOverListener(FailOverListener localListener) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Removing local listener " + localListener);
+		}
+		
+		FailOverListener oldData=failOverListener.get();
+		failOverListener.set(null);
+		return oldData!=null;		
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#addDataRemovalListener(org.restcomm.cluster.DataRemovalListener)
+	 */
+	public boolean addDataRemovalListener(DataRemovalListener listener) {
+		return dataRemovalListener.compareAndSet(null, listener);		
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#removeDataRemovalListener(org.restcomm.cluster.DataRemovalListener)
+	 */
+	public boolean removeDataRemovalListener(DataRemovalListener listener) {
+		DataRemovalListener oldData=dataRemovalListener.get();
+		dataRemovalListener.set(null);
+		return oldData!=null;
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#addDataListener(org.restcomm.cluster.DataListener)
+	 */
+	public boolean addDataListener(DataListener listener) {
+		return dataListener.compareAndSet(null, listener);		
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see org.restcomm.cluster.RestcommCluster#removeDataListener(org.restcomm.cluster.DataListener)
+	 */
+	public boolean removeDataListener(DataListener listener) {
+		DataListener oldData=dataListener.get();
+		dataListener.set(null);
+		return oldData!=null;
+	}
+	
+	@Override
+	public void startCluster(Boolean useRemovalOnlyListener) {
+		logger.info("Starting cluster");
+		synchronized (this) {
+			if (started) {
+				throw new IllegalStateException("cluster already started");
+			}
+			localCache.startCache();
+			
+			this.useRemovalOnlyListener=useRemovalOnlyListener;
+			logger.info("registring listener!");
+				
+			if(!isLocalMode()) {
+				// get current cluster members
+				currentView = localCache.getCurrentView();
+				
+				// start listening to cache events
+				if(this.useRemovalOnlyListener)
+					localCache.addListener(this);
+				else
+					localCache.addListener(new ExtendedCacheListener());
+				
+				viewListener.registerListener(localCache.getName(), this);	            						
+			}
+			
+			started = true;
+		}				
+	}
+	
+	@Override
+	public boolean isStarted() {
+		synchronized (this) {
+			return started;
+		}
+	}
+	
+	@Override
+	public void stopCluster() {
+		synchronized (this) {
+			if (!started) {
+				throw new IllegalStateException("cluster already stopped");
+			}
+			
+			if(logStats!=null && logStats) {
+				for(ClusterOperation operation:ClusterOperation.values()) {
+					logger.warn(operation + " stats for " + localCache.getName() + " are:[ops=" + allOperations.get(operation).get() + ",long ops=" + longOperations.get(operation).get() + ",total time:" + operationTime.get(operation).get() + "]");				
+				}
+			}
+			
+			localCache.stopCache();
+			started = false;
+		}				
+	}
+
+    @Override
+	public Object get(Object key,Boolean ignoreRollbackState) {
+    	long startTime=System.currentTimeMillis();
+		Object result=getCache().get(this, key, ignoreRollbackState);
+		updateStats(ClusterOperation.GET, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+    
+    @Override
+	public Boolean exists(Object key,Boolean ignoreRollbackState) {
+    	long startTime=System.currentTimeMillis();
+		Boolean result=getCache().exists(this, key, ignoreRollbackState);
+		updateStats(ClusterOperation.EXIST, (System.currentTimeMillis()-startTime));
+		return result;
+    }
+    
+    @Override
+    public Object remove(Object key,Boolean ignoreRollbackState,Boolean returnValue) {
+    	long startTime=System.currentTimeMillis();
+		Object result=getCache().remove(this, key, ignoreRollbackState, returnValue);
+		updateStats(ClusterOperation.REMOVE, (System.currentTimeMillis()-startTime));
+		return result;
+    }
+    
+    public void put(Object key,Object value,Boolean ignoreRollbackState) {
+    	long startTime=System.currentTimeMillis();
+    	getCache().put(this, key, value, ignoreRollbackState);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
+    }
+    
+    public Boolean putIfAbsent(Object key,Object value,Boolean ignoreRollbackState) {
+    	long startTime=System.currentTimeMillis();
+		Boolean result=getCache().putIfAbsent(this, key, value, ignoreRollbackState);  
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
+		return result;
+    }
+    
+    private InfinispanCache getCache() {
+    	return localCache;
+    }   
+    
+    public Set<?> getAllKeys()
+    {
+    	long startTime=System.currentTimeMillis();
+    	Set<?> result=localCache.getAllKeys();
+    	updateStats(ClusterOperation.GET_ALL_KEYS, (System.currentTimeMillis()-startTime));
+    	return result;
+    }
+    
+    public Map<?,?> getAllElements()
+    {
+    	long startTime=System.currentTimeMillis();
+    	Map<?,?> result=localCache.getAllElements();
+    	updateStats(ClusterOperation.GET_ALL_ELEMENTS, (System.currentTimeMillis()-startTime));
+    	return result;
+    }
+
+	@Override
+	public TransactionManager getTransactionManager() {
+		return txMgr;
+	}
+
+	@Override	
+	public List<TreeSegment<?>> getAllChilds(TreeSegment<?> key,Boolean ignoreRollbackState)
+	{
+		long startTime=System.currentTimeMillis();
+		List<TreeSegment<?>> result;
+		if(key!=null)
+			result=getCache().getAllChilds(this, key, ignoreRollbackState);
+		else
+			result=getCache().getAllChilds(this, RootTreeSegment.INSTANCE, ignoreRollbackState);
+		
+		updateStats(ClusterOperation.GET_ALL_KEYS, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public Boolean hasChildrenData(TreeSegment<?> key) {
+		if(key!=null)
+			return getCache().hasChildren(this, key, false);
+		else
+			return getCache().hasChildren(this, RootTreeSegment.INSTANCE, false);	
+	}
+	
+	@Override
+	public Map<TreeSegment<?>,Object> getAllChildrenData(TreeSegment<?> key,Boolean ignoreRollbackState)
+	{
+		long startTime=System.currentTimeMillis();
+		Map<TreeSegment<?>,Object> result;
+		if(key!=null)
+			result = getCache().getAllChildrenData(this, key, ignoreRollbackState);
+		else
+			result = getCache().getAllChildrenData(this, RootTreeSegment.INSTANCE, ignoreRollbackState);
+		
+		updateStats(ClusterOperation.GET_ALL_ELEMENTS, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+	
+	@Override
+	public Object treeGet(TreeSegment<?> key, Boolean ignoreRollbackState) 
+	{
+		long startTime=System.currentTimeMillis();
+		Object result=getCache().treeGet(this, key, ignoreRollbackState);
+		updateStats(ClusterOperation.GET, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public Boolean treeExists(TreeSegment<?> key, Boolean ignoreRollbackState) {
+		long startTime=System.currentTimeMillis();
+		Boolean result=getCache().treeExists(this, key, ignoreRollbackState);
+		updateStats(ClusterOperation.EXIST, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public void treeRemove(TreeSegment<?> key, Boolean ignoreRollbackState) {
+		long startTime=System.currentTimeMillis();
+		getCache().treeRemove(this, key, ignoreRollbackState, false);
+		updateStats(ClusterOperation.REMOVE, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
+	public void treeRemoveValue(TreeSegment<?> key, Boolean ignoreRollbackState) {
+		long startTime=System.currentTimeMillis();
+		getCache().treeRemoveValue(this, key, ignoreRollbackState, false);
+		updateStats(ClusterOperation.REMOVE_VALUE, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
+	public Boolean treePut(TreeSegment<?> key, Object value, Boolean ignoreRollbackState) {
+		long startTime=System.currentTimeMillis();
+		Boolean result=getCache().treePut(this, key, value, ignoreRollbackState, false);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public TreePutIfAbsentResult treePutIfAbsent(TreeSegment<?> key, Object value, Boolean ignoreRollbackState) {
+		long startTime=System.currentTimeMillis();
+		TreePutIfAbsentResult result=getCache().treePutIfAbsent(this, key, value, ignoreRollbackState, false);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+	
+	@Override
+	public Boolean treeCreate(TreeSegment<?> key, Boolean ignoreRollbackState) {
+		long startTime=System.currentTimeMillis();
+		Boolean result=getCache().treeCreate(this, key, ignoreRollbackState, false);
+		updateStats(ClusterOperation.CREATE, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public Boolean treeMulti(Map<TreeSegment<?>,Object> putItems,Boolean createParent,Boolean ignoreRollbackState) {
+		if(putItems==null || putItems.size()==0)
+			return true;
+		
+		Entry<TreeSegment<?>, Object> firstEntry=putItems.entrySet().iterator().next();
+		TreeSegment<?> parentKey=firstEntry.getKey().getParent();
+		Iterator<Entry<TreeSegment<?>, Object>>  iterator=putItems.entrySet().iterator();
+		while(iterator.hasNext())
+		{
+			Entry<TreeSegment<?>, Object> currEntry=iterator.next();
+			if(!currEntry.getKey().getParent().equals(parentKey))
+				return false;
+		}
+		
+		long startTime=System.currentTimeMillis();
+		Boolean result=getCache().treeMulti(this, putItems, createParent, ignoreRollbackState);
+		updateStats(ClusterOperation.COMMIT, (System.currentTimeMillis()-startTime));
+		return result;
+	}	
+
+	public void treeMarkAsPreloaded(Map<TreeSegment<?>,Object> putItems) {
+		if(putItems==null || putItems.size()==0)
+			return;
+		
+		Entry<TreeSegment<?>, Object> firstEntry=putItems.entrySet().iterator().next();
+		TreeSegment<?> parentKey=firstEntry.getKey().getParent();
+		Iterator<Entry<TreeSegment<?>, Object>>  iterator=putItems.entrySet().iterator();
+		while(iterator.hasNext())
+		{
+			Entry<TreeSegment<?>, Object> currEntry=iterator.next();
+			if(!currEntry.getKey().getParent().equals(parentKey))
+				return;
+		}
+		
+		getCache().treeMarkAsPreloaded(this, putItems);
+	}
+	
+	@Override
+	public List<TreeSegment<?>> getChildren(TreeSegment<?> key) {
+		return getAllChilds(key, false);		
+	}
+
+	@Override
+	public Map<TreeSegment<?>,Object> getChildrenData(TreeSegment<?> key) {
+		return getAllChildrenData(key, false);		
+	}
+
+	@Override
+	public void treePreload(TreeSegment<?> key) {
+		getCache().preload(this, key);
+	}
+
+	@Override
+	public Boolean treeIsPreloaded(TreeSegment<?> key) {
+		return getCache().isPreloaded(key);
+	}
+	
+	public void updateStats(ClusterOperation operation,long time) {
+		allOperations.get(operation).incrementAndGet();
+		if(time>100)
+			longOperations.get(operation).incrementAndGet();
+		
+		operationTime.get(operation).addAndGet(time);		
+	}
+	
+	public void viewChanged() {
+		final List<String> oldView = currentView;
+		List<String> newMembers=getCache().getCurrentView();
+		currentView = new ArrayList<String>(newMembers);
+		final String localAddress = getLocalAddress();
+		
+		//just a precaution, it can be null!
+		if (oldView != null) {
+			
+			// recover stuff from lost members
+			Runnable runnable = new Runnable() {
+				public void run() {
+					for (String oldMember : oldView) {
+						if (!currentView.contains(oldMember)) {
+							if (logger.isDebugEnabled()) {
+								logger.debug("onViewChangeEvent : processing lost member " + oldMember);
+							}
+							FailOverListener listener=failOverListener.get();
+							if(listener!=null) {
+								List<String> electionView = currentView;
+								if(electionView!=null && elector.elect(electionView).equals(localAddress))
+								{
+									performTakeOver(oldMember, localAddress, false);
+								}
+								
+								//cleanAfterTakeOver(localListener, oldMember);
+							}
+						}
+					}
+				}
+			};
+			Thread t = new Thread(runnable);
+			t.start();
+		}
+	}
+	
+	public void entryRemoved(Object key) {
+		DataListener listener=dataListener.get();
+		if (listener != null) {				
+			listener.dataRemoved(key);
+		} else {
+			DataRemovalListener drListener=dataRemovalListener.get();
+			if(drListener!=null) {				
+				drListener.dataRemoved(key);
+			}			
+		}
+	}
+	
+	public void entryCreated(Object key) {
+		DataListener listener=dataListener.get();
+		if (listener != null) {				
+			listener.dataCreated(key);
+		}
+	}
+	
+	public void entryModified(Object key) {
+		DataListener listener=dataListener.get();
+		if (listener != null) {				
+			listener.dataModified(key);
+		}
+	}
+	
+	@Listener
+	private class ExtendedCacheListener {
+		@SuppressWarnings("rawtypes")
+		@CacheEntryRemoved
+		public void clusterCacheEntryRemoved(CacheEntryRemovedEvent event){
+			if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null && event.getOldValue()!=null )
+				 entryRemoved(event.getKey());
+		}
+		
+		@SuppressWarnings("rawtypes")
+		@CacheEntryCreated
+		public void clusterCacheEntryCreated(CacheEntryCreatedEvent event){
+			if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null )
+				entryCreated(event.getKey());			
+		}
+		
+		@SuppressWarnings("rawtypes")
+		@CacheEntryModified
+		public void clusterCacheEntryModified(CacheEntryModifiedEvent event){
+			if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null )
+				entryModified(event.getKey());			
+		}
+	}
+}
