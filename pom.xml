@@ -9,7 +9,7 @@
 	
 	<groupId>com.mobius-software.cluster</groupId>
 	<artifactId>cluster-parent</artifactId>
-	<version>8.0.0-24-SNAPSHOT</version>
+	<version>8.0.0-24</version>
 	
 	<packaging>pom</packaging>
 	
@@ -21,7 +21,8 @@
         <connection>scm:git:git@github.com:mobius-software-ltd/cluster.git</connection>
         <developerConnection>scm:git:git@github.com:mobius-software-ltd/cluster.git</developerConnection>
         <url>https://github.com/mobius-software-ltd/cluster</url>
-  	</scm>
+  	  <tag>cluster-parent-8.0.0-24</tag>
+  </scm>
 
 	<properties>
 		<compile.source>1.8</compile.source>
