@@ -25,6 +25,7 @@ import org.infinispan.Cache;
 import org.infinispan.atomic.AtomicMap;
 import org.infinispan.commons.api.Lifecycle;
 import org.infinispan.context.Flag;
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.data.TreeSegment;
 /*
  * This is modified copy of infinispan implementation for tree
@@ -53,6 +54,17 @@ public interface TreeCache extends Lifecycle {
 	Node getNode(TreeSegment<?> fqn, Flag... flags);
 	
 	/**
+	 * A convenience method to retrieve a node directly from the cache. Equivalent
+	 * to calling cache.getRoot().getChild(fqn).
+	 *
+	 * @param fqn fqn of the node to retrieve
+	 * @throws IllegalStateException if the cache is not in a started state
+	 */
+	void getNodeAsync(TreeSegment<?> fqn, AsyncCacheCallback<Node> callback);
+
+	void getNodeAsync(TreeSegment<?> fqn, AsyncCacheCallback<Node> callback, Flag... flags);
+	
+	/**
 	 * @return a reference to the underlying cache instance
 	 */
 	Cache<TreeSegment<?>, AtomicMap<Object,Object>> getCache();
@@ -66,6 +78,15 @@ public interface TreeCache extends Lifecycle {
 	boolean exists(TreeSegment<?> fqn);
 
 	boolean exists(TreeSegment<?> fqn, Flag... flags);
+	
+	/**
+	 * Tests if an Fqn exists.
+	 *
+	 * @param fqn Fqn to test
+	 */
+	void existsAsync(TreeSegment<?> fqn, AsyncCacheCallback<Boolean> callback);
+
+	void existsAsync(TreeSegment<?> fqn, AsyncCacheCallback<Boolean> callback, Flag... flags);
 	
 	/**
 	 * Root node is the main lock point, therefore it is recommended to segment it.This method returns hash code 

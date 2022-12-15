@@ -48,7 +48,7 @@ public interface RestcommCluster {
 	/**
 	 * Removes the specified fail over listener.
 	 * @param listener
-	 * @return
+	 * @return boolean
 	 */
 	public boolean removeFailOverListener(FailOverListener listener);
 	
@@ -61,26 +61,27 @@ public interface RestcommCluster {
 	/**
 	 * Removes the specified data removal listener.
 	 * @param listener
-	 * @return
+	 * @return boolean
 	 */
 	public boolean removeDataRemovalListener(DataRemovalListener listener);
 	
 	/**
 	 * Adds the specified data listener.
 	 * @param listener
+	 * @return boolean
 	 */
 	public boolean addDataListener(DataListener listener);
 	
 	/**
 	 * Removes the specified data listener.
 	 * @param listener
-	 * @return
+	 * @return boolean
 	 */
 	public boolean removeDataListener(DataListener listener);
 	
 	/**
 	 * Retrieves the local address of the cluster node.
-	 * @return
+	 * @return String
 	 */
 	public String getLocalAddress();
 	
@@ -88,7 +89,7 @@ public interface RestcommCluster {
 	/**
      * Indicates if the cache is not in a cluster environment.
      *
-     * @return the localMode
+     * @return boolean the localMode
      */
     public boolean isLocalMode();
     
@@ -113,7 +114,7 @@ public interface RestcommCluster {
 	
 	/**
 	 * Indicates if the cluster is running or not.
-	 * @return
+	 * @return boolean
 	 */
 	public boolean isStarted();
 	
@@ -124,145 +125,230 @@ public interface RestcommCluster {
 	
 	/**
 	 * Retreived cached value from cache.
-	 * @return
+	 * @return Object
 	 */
 	public Object treeGet(TreeSegment<?> key,Boolean ignoreRollbackState);
 	
 	/**
+	 * Retreived cached value from cache.
+	 */
+	public void treeGetAsync(TreeSegment<?> key,AsyncCacheCallback<Object> callback);
+	
+	/**
 	 * Validates if element exists in cache.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean treeExists(TreeSegment<?> key,Boolean ignoreRollbackState);
 	
 	/**
+	 * Validates if element exists in cache.
+	 */
+	public void treeExistsAsync(TreeSegment<?> key,AsyncCacheCallback<Boolean> callback);
+	
+	/**
 	 * Removes the element from cache.
-	 * @return
 	 */
 	public void treeRemove(TreeSegment<?> key,Boolean ignoreRollbackState);
 	
 	/**
+	 * Removes the element from cache.
+	 */
+	public void treeRemoveAsync(TreeSegment<?> key,AsyncCacheCallback<Void> callback);
+	
+	/**
 	 * Removes the value from cache.
-	 * @return
 	 */
 	public void treeRemoveValue(TreeSegment<?> key,Boolean ignoreRollbackState);
 	
 	/**
+	 * Removes the value from cache.
+	 */
+	public void treeRemoveValueAsync(TreeSegment<?> key,AsyncCacheCallback<Void> callback);
+	
+	/**
 	 * Stores value to cache.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean treePut(TreeSegment<?> key,Object value,Boolean ignoreRollbackState);
 		
 	/**
+	 * Stores value to cache.
+	 */
+	public void treePutAsync(TreeSegment<?> key,Object value,AsyncCacheCallback<Boolean> callback);
+		
+	/**
 	 * Stores value to cache if the parent exists and child doesnt.
-	 * @return
+	 * @return TreePutIfAbsentResult
 	 */
 	public TreePutIfAbsentResult treePutIfAbsent(TreeSegment<?> key,Object value,Boolean ignoreRollbackState);
 		
 	/**
+	 * Stores value to cache if the parent exists and child doesnt.
+	 */
+	public void treePutIfAbsentAsync(TreeSegment<?> key,Object value,AsyncCacheCallback<TreePutIfAbsentResult> callback);
+		
+	/**
 	 * Create a tree element.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean treeCreate(TreeSegment<?> key,Boolean ignoreRollbackState);
 		
 	/**
+	 * Create a tree element.
+	 */
+	public void treeCreateAsync(TreeSegment<?> key,AsyncCacheCallback<Boolean> callback);
+		
+	/**
 	 * Multi operation to put multiple childs into tree in one op.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean treeMulti(Map<TreeSegment<?>,Object> putItems,Boolean createParent,Boolean ignoreRollbackState);
 	
 	/**
+	 * Multi operation to put multiple childs into tree in one op.
+	 */
+	public void treeMultiAsync(Map<TreeSegment<?>,Object> putItems,Boolean createParent, AsyncCacheCallback<Boolean> callback);
+	
+	/**
 	 * When created out of op and then op resumed/created we may use this method to preload the data without going to cache
-	 * @return
 	 */
 	public void treeMarkAsPreloaded(Map<TreeSegment<?>,Object> putItems);
 	
 	/**
 	 * Returns all child element from cache.
-	 * @return
+	 * @return List<TreeSegment<?>>
 	 */
 	public List<TreeSegment<?>> getAllChilds(TreeSegment<?> key,Boolean ignoreRollbackState);
 	
 	/**
 	 * Returns all child element from cache.
-	 * @return
+	 */
+	public void getAllChildsAsync(TreeSegment<?> key,AsyncCacheCallback<List<TreeSegment<?>>> callback);
+	
+	/**
+	 * Returns all child element from cache.
+	 * @return List<TreeSegment<?>>
 	 */
 	public List<TreeSegment<?>> getChildren(TreeSegment<?> key);
 	
 	/**
+	 * Returns all child element from cache.
+	 */
+	public void getChildrenAsync(TreeSegment<?> key, AsyncCacheCallback<List<TreeSegment<?>>> callback);
+	
+	/**
 	 * Returns all values assigned for current element from cache.
-	 * @return
+	 * @return Map<TreeSegment<?>,Object>
 	 */
 	public Map<TreeSegment<?>,Object> getAllChildrenData(TreeSegment<?> key,Boolean ignoreRollbackState);
 	
 	/**
 	 * Returns all values assigned for current element from cache.
-	 * @return
+	 */
+	public void getAllChildrenDataAsync(TreeSegment<?> key, AsyncCacheCallback<Map<TreeSegment<?>,Object>> callback);
+	
+	/**
+	 * Returns all values assigned for current element from cache.
+	 * @return Map<TreeSegment<?>,Object>
 	 */
 	public Map<TreeSegment<?>,Object> getChildrenData(TreeSegment<?> key);
 	
 	/**
+	 * Returns all values assigned for current element from cache.
+	 */
+	public void getChildrenDataAsync(TreeSegment<?> key,AsyncCacheCallback<Map<TreeSegment<?>,Object>> callback);
+	
+	/**
 	 * Returns whether element has values assigned in cache.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean hasChildrenData(TreeSegment<?> key);
 	
 	/**
+	 * Returns whether element has values assigned in cache.
+	 */
+	public void hasChildrenDataAsync(TreeSegment<?> key,AsyncCacheCallback<Boolean> callback);
+	
+	/**
 	 * Preloads the element children into tx cache.
-	 * @return
 	 */
 	public void treePreload(TreeSegment<?> key);
 	
 	/**
 	 * Returns whether children has been preloaded already into tx cache.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean treeIsPreloaded(TreeSegment<?> key);
 	
 	/**
 	 * Retreived cached value from cache.
-	 * @return
+	 * @return Object
 	 */
 	public Object get(Object key,Boolean ignoreRollbackState);
 	
 	/**
+	 * Retreived cached value from cache.
+	 */
+	public void getAsync(Object key,AsyncCacheCallback<Object> callback);
+	
+	/**
 	 * Validates if key exists in cache.
-	 * @return
+	 * @return Boolean
 	 */
 	public Boolean exists(Object key,Boolean ignoreRollbackState);
 	
 	/**
+	 * Validates if key exists in cache.
+	 */
+	public void existsAsync(Object key,AsyncCacheCallback<Boolean> callback);
+	
+	/**
 	 * Removes the value from cache.
-	 * @return
+	 * @return Object
 	 */
 	public Object remove(Object key,Boolean ignoreRollbackState,Boolean returnValue);
 	
 	/**
+	 * Removes the value from cache.
+	 */
+	public void removeAsync(Object key,Boolean returnValue,AsyncCacheCallback<Object> callback);
+	
+	/**
 	 * Stores value to cache.
-	 * @return
 	 */
 	public void put(Object key,Object value,Boolean ignoreRollbackState);
 		
 	/**
+	 * Stores value to cache.
+	 */
+	public void putAsync(Object key,Object value,AsyncCacheCallback<Void> callback);
+		
+	/**
 	 * Stores value to cache if key not present.
-	 * @return whether the operation succeeded
+	 * @return Boolean whether the operation succeeded
 	 */
 	public Boolean putIfAbsent(Object key,Object value,Boolean ignoreRollbackState);
 		
 	/**
+	 * Stores value to cache if key not present.
+	 */
+	public void putIfAbsentAsync(Object key,Object value,AsyncCacheCallback<Boolean> callback);
+		
+	/**
 	 * Returns all keys from cache.
-	 * @return
+	 * @return Set<?>
 	 */
 	public Set<?> getAllKeys();
 	
 	/**
 	 * Returns all elements from cache.
-	 * @return
+	 * @return Map<?,?>
 	 */
 	public Map<?,?> getAllElements();
 	
 	/**
 	 * Returns transaction manager used with this cache.
-	 * @return
+	 * @return TransactionManager
 	 */
 	public TransactionManager getTransactionManager();
 	

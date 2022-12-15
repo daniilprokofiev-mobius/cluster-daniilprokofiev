@@ -20,11 +20,12 @@
 package org.restcomm.cluster.data;
 
 
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.RestcommCluster;
 
 /**
  * 
- * Abstract class for a clustered tree {@link CacheData}.
+ * Abstract class for a clustered tree data.
  * 
  * @author yulian.oifa
  *
@@ -35,7 +36,7 @@ public class ClusteredTreeCacheData<T,V> {
     
 	/**
 	 * @param key
-	 * @param cache
+	 * @param cluster
 	 */
 	public ClusteredTreeCacheData(TreeSegment<T> key, RestcommCluster cluster) {
 		this.key=key;
@@ -47,24 +48,49 @@ public class ClusteredTreeCacheData<T,V> {
 		return (V)cluster.treeGet(key,false);		
 	}
 	
+	@SuppressWarnings("unchecked")
+	public void getTreeValueAsync(AsyncCacheCallback<V> callback) {
+		cluster.treeGetAsync(key,(AsyncCacheCallback<Object>) callback);		
+	}
+	
 	public Boolean putValue(V value) {
 		return cluster.treePut(key, value,false);		
+	}
+	
+	public void putValueAsync(V value,AsyncCacheCallback<Boolean> callback) {
+		cluster.treePutAsync(key, value, callback);		
 	}
 	
 	public TreePutIfAbsentResult putValueIfAbsent(V value) {
 		return cluster.treePutIfAbsent(key, value,false);		
 	}
 	
+	public void putValueIfAbsentAsync(V value, AsyncCacheCallback<TreePutIfAbsentResult> callback) {
+		cluster.treePutIfAbsentAsync(key, value, callback);		
+	}
+	
 	public Boolean create() {
 		return cluster.treeCreate(key, false);		
+	}
+	
+	public void createAsync(AsyncCacheCallback<Boolean> callback) {
+		cluster.treeCreateAsync(key, callback);		
 	}
 	
 	public void removeElement() {
 		cluster.treeRemove(key,false);		
 	}
 	
+	public void removeElementAsync(AsyncCacheCallback<Void> callback) {
+		cluster.treeRemoveAsync(key,callback);
+	}
+	
 	public void removeValue() {
 		cluster.treeRemoveValue(key,false);		
+	}
+	
+	public void removeValueAsync(AsyncCacheCallback<Void> callback) {
+		cluster.treeRemoveValueAsync(key, callback);
 	}
 	
 	public TreeSegment<T> getKey() {
@@ -73,6 +99,10 @@ public class ClusteredTreeCacheData<T,V> {
 
     public Boolean exists() {
         return cluster.treeExists(key,false);
+    }
+
+    public void existsAsync(AsyncCacheCallback<Boolean> callback) {
+        cluster.treeExistsAsync(key, callback);
     }
     
     public void preload() {

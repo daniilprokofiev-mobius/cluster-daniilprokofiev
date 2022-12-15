@@ -30,21 +30,21 @@ public interface DataListener {
 
 	/**
 	 * Indicates that the data with the specified fqn was removed. 
-	 * @param clusteredCacheDataFqnWrapper
+	 * @param key
 	 */
 	//@SuppressWarnings("unchecked")
 	public void dataRemoved(Object key);
 	
 	/**
 	 * Indicates that the data with the specified fqn was created. 
-	 * @param clusteredCacheDataFqnWrapper
+	 * @param key
 	 */
 	//@SuppressWarnings("unchecked")
 	public void dataCreated(Object key);
 	
 	/**
 	 * Indicates that the data with the specified fqn was modified. 
-	 * @param clusteredCacheDataFqnWrapper
+	 * @param key
 	 */
 	//@SuppressWarnings("unchecked")
 	public void dataModified(Object key);

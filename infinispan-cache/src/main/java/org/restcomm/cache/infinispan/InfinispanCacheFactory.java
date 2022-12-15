@@ -45,7 +45,7 @@ public class InfinispanCacheFactory implements RestcommCacheFactory
 	private IDGenerator<?> idGenerator;
 	private Boolean logStats;
 	
-	public InfinispanCacheFactory(TransactionManager transactionManager,Serializer serializer,IDGenerator<?> idGenerator, ClassLoader classLoader,CacheDataExecutorService service,Integer aquireTimeout,Boolean isReplicated, Boolean paritioned, Integer copies,Boolean logStats) {
+	public InfinispanCacheFactory(TransactionManager transactionManager,Serializer serializer,IDGenerator<?> idGenerator, ClassLoader classLoader,CacheDataExecutorService service,Integer aquireTimeout,Boolean isAsync, Boolean isReplicated, Boolean paritioned, Integer copies,Boolean logStats) {
 		this.cacheExecutorService=service;
 		this.classLoader=classLoader;
 		
@@ -56,7 +56,7 @@ public class InfinispanCacheFactory implements RestcommCacheFactory
 		
 		final TransactionManager txMgr=transactionManager;
 		if(this.jBossCacheContainer==null) {
-			this.jBossCacheContainer=InfinispanCache.initContainer(txMgr,serializer, isReplicated, paritioned, copies, aquireTimeout);
+			this.jBossCacheContainer=InfinispanCache.initContainer(txMgr,serializer, isAsync, isReplicated, paritioned, copies, aquireTimeout);
 			this.viewChangedListener=new ViewChangedListener();
 			this.jBossCacheContainer.addListener(viewChangedListener);
 		}

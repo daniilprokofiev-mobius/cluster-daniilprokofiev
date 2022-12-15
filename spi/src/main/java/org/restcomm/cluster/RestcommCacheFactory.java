@@ -30,25 +30,22 @@ public interface RestcommCacheFactory {
 
 	/**
 	 * Returns cache by name and type.
-	 * @return
+	 * @return RestcommCluster
 	 */
 	public RestcommCluster getCluster(String name,Boolean isTree);
 	
 	/**
 	 * Removes cache by name
-	 * @return
 	 */
 	public void removeCluster(String name);
 	
 	/**
 	 * Stops all the caches.
-	 * @return
 	 */
 	public void stop();		
 	
 	/**
 	 * register known class into serialization registry.
-	 * @return
 	 */
 	public void registerKnownClass(int id, Class<? extends Externalizable> knownClass);
 }

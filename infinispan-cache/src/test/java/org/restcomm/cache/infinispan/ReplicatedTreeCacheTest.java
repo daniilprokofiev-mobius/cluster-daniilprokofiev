@@ -76,11 +76,11 @@ public class ReplicatedTreeCacheTest
 	    IDGenerator<UUID> generator=new UUIDGenerator();
 	    
 		CacheExecutorConfiguration configuration=new CacheExecutorConfiguration(16, 1000L, 1000L);
-		factory=new InfinispanCacheFactory(transactionManager, null, generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, true, false, 1, true);
+		factory=new InfinispanCacheFactory(transactionManager, null, generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
 		cluster=factory.getCluster("testtr", true);
 		cluster.startCluster(false);		
 		
-		factory2=new InfinispanCacheFactory(transactionManager, null, generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, true, false, 1, true);
+		factory2=new InfinispanCacheFactory(transactionManager, null, generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
 		cluster2=factory2.getCluster("testtr", true);
 		cluster2.startCluster(false);
 	}

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -54,10 +55,12 @@ import org.infinispan.context.Flag;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.transaction.LockingMode;
+import org.infinispan.transaction.TransactionMode;
 import org.infinispan.util.concurrent.IsolationLevel;
 import org.restcomm.cache.infinispan.tree.Node;
 import org.restcomm.cache.infinispan.tree.TreeCache;
 import org.restcomm.cache.infinispan.tree.TreeCacheFactory;
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.CacheDataExecutorService;
 import org.restcomm.cluster.CacheDataExecutorService.CommonCommand;
 import org.restcomm.cluster.IDGenerator;
@@ -92,6 +95,7 @@ public class InfinispanCache {
     private TreeCache treeCache;
     
     private boolean localMode;
+    private boolean isAsync;
     private boolean isTree;
     private String name;
     private Boolean logStats;
@@ -117,13 +121,18 @@ public class InfinispanCache {
             localMode = true;
         }     
 
+		if(jBossCacheContainer.getDefaultCacheConfiguration().clustering().cacheMode()==CacheMode.DIST_ASYNC || jBossCacheContainer.getDefaultCacheConfiguration().clustering().cacheMode()==CacheMode.REPL_ASYNC)
+			this.isAsync=true;
+		else
+			this.isAsync=false;
+		
 		this.isTree=isTree;
         this.name = name;
         
         Thread.currentThread().setContextClassLoader(currentClassLoader);
     }
 
-    public static DefaultCacheManager initContainer(TransactionManager txMgr,Serializer serializer,Boolean isReplicated,Boolean isParititioned,Integer copies,Integer aquireTimeout) {
+    public static DefaultCacheManager initContainer(TransactionManager txMgr,Serializer serializer,Boolean isAsync, Boolean isReplicated,Boolean isParititioned,Integer copies,Integer aquireTimeout) {
     	DefaultCacheManager jBossCacheContainer;
     	TransactionManagerLookup txLookup=new TransactionManagerLookup() {				
 			@Override
@@ -134,7 +143,13 @@ public class InfinispanCache {
 		
 		if(isReplicated) {
 			Configuration defaultConfig;
-			if(isParititioned)				
+			if(isAsync) {
+				if(isParititioned)
+					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.DIST_ASYNC).hash().numOwners(copies).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+				else
+					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.REPL_ASYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+			} 
+			else if(isParititioned)				
 				defaultConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
 			else
 				defaultConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
@@ -236,6 +251,9 @@ public class InfinispanCache {
     }
 
     public Object get(RestcommCluster cluster,Object key,Boolean ignoreRollbackState) {
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	Object result = null;
     	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
     	    result = getNonTreeCache().withFlags(Flag.SKIP_LOCKING).get(key);
@@ -245,8 +263,24 @@ public class InfinispanCache {
 
         return result;
 	}
-    
+
+    public void getAsync(RestcommCluster cluster,Object key,AsyncCacheCallback<Object> callback) {
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	CompletableFuture<Object> future = getNonTreeCache().withFlags(Flag.SKIP_LOCKING).getAsync(key);
+    	future.whenComplete((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(r);
+    	});
+	}
+
     public Boolean exists(RestcommCluster cluster,Object key,Boolean ignoreRollbackState) {
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	boolean result = false;
         if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
             result = getNonTreeCache().withFlags(Flag.SKIP_LOCKING).containsKey(key);
@@ -258,9 +292,25 @@ public class InfinispanCache {
         }
     	return result;
     }
+
+    public void existsAsync(RestcommCluster cluster,Object key,AsyncCacheCallback<Boolean> callback) {
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	CompletableFuture<Boolean> future = getNonTreeCache().withFlags(Flag.SKIP_LOCKING).containsKeyAsync(key);
+    	future.whenComplete((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(r);
+    	});
+    }
     
     public Object remove(RestcommCluster cluster,Object key,Boolean ignoreRollbackState,Boolean returnValue) {
-        // MAY BE USEFULL TO CONTROLL THE LOCKING FROM CODE IN FUTURE
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	// MAY BE USEFULL TO CONTROLL THE LOCKING FROM CODE IN FUTURE
         /*
          * try { if(this.cache.getJBossCache().getAdvancedCache().getTransactionManager().getTransaction()!=null) {
          * this.cache.getJBossCache().getAdvancedCache().lock(key); } } catch(SystemException ex) {
@@ -285,8 +335,29 @@ public class InfinispanCache {
     	return result;
     }
     
+    public void removeAsync(RestcommCluster cluster,Object key,Boolean returnValue,AsyncCacheCallback<Object> callback) {
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	CompletableFuture<Object> future;
+    	if(returnValue)
+    		future = getNonTreeCache().removeAsync(key);
+		else
+			future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).removeAsync(key);    
+    	
+    	future.whenComplete((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(r);
+    	});
+    }
+    
     public void put(RestcommCluster cluster,Object key,Object value,Boolean ignoreRollbackState) {
-        // MAY BE USEFULL TO CONTROLL THE LOCKING FROM CODE IN FUTURE
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	// MAY BE USEFULL TO CONTROLL THE LOCKING FROM CODE IN FUTURE
         /*
          * try { if(this.cache.getJBossCache().getAdvancedCache().getTransactionManager().getTransaction()!=null) {
          * this.cache.getJBossCache().getAdvancedCache().lock(key); } } catch(SystemException ex) {
@@ -305,8 +376,24 @@ public class InfinispanCache {
     		cacheDataExecutorService.put(cluster, key, value);    	
     }
     
+    public void putAsync(RestcommCluster cluster,Object key,Object value,AsyncCacheCallback<Void> callback) {
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	CompletableFuture<Object> future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).putAsync(key, value);
+    	future.whenComplete((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(null);
+    	});
+    }
+    
     public Boolean putIfAbsent(RestcommCluster cluster,Object key,Object value,Boolean ignoreRollbackState) {
-        // MAY BE USEFULL TO CONTROLL THE LOCKING FROM CODE IN FUTURE
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	// MAY BE USEFULL TO CONTROLL THE LOCKING FROM CODE IN FUTURE
         /*
          * try { if(this.cache.getJBossCache().getAdvancedCache().getTransactionManager().getTransaction()!=null) {
          * this.cache.getJBossCache().getAdvancedCache().lock(key); } } catch(SystemException ex) {
@@ -326,6 +413,19 @@ public class InfinispanCache {
     	
     	return false;
     }
+    
+    public void putIfAbsentAsync(RestcommCluster cluster,Object key,Object value,AsyncCacheCallback<Boolean> callback) {
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	CompletableFuture<Object> future = getNonTreeCache().putIfAbsentAsync(key, value);
+    	future.whenComplete((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(r==null);
+    	});
+    }
 
     /*
      * Retreives all the keys stored in specific cache beware of using this operation , its very very expensive
@@ -341,7 +441,7 @@ public class InfinispanCache {
         
         return output;
     }
-
+    
     /*
      * Retreives all the keys stored in specific cache beware of using this operation , its very very expensive
      */
@@ -406,6 +506,9 @@ public class InfinispanCache {
     
     public List<TreeSegment<?>> getAllChilds(RestcommCluster cluster,TreeSegment<?> key,Boolean ignoreRollbackState)
 	{
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	List<TreeSegment<?>> output=new ArrayList<TreeSegment<?>>();
     	ConcurrentHashMap<Object, Boolean> usedObjects=new ConcurrentHashMap<Object, Boolean>();
     	
@@ -460,8 +563,44 @@ public class InfinispanCache {
     	return output;
     }
     
+    public void getAllChildsAsync(RestcommCluster cluster,TreeSegment<?> key,AsyncCacheCallback<List<TreeSegment<?>>> callback)
+	{
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	getTreeCache().getNodeAsync(key,new AsyncCacheCallback<Node>() {
+			
+			@Override
+			public void onSuccess(Node value) {
+				List<TreeSegment<?>> output=new ArrayList<TreeSegment<?>>();
+		    	ConcurrentHashMap<Object, Boolean> usedObjects=new ConcurrentHashMap<Object, Boolean>();
+		    	Set<TreeSegment<?>> result=null;
+		    	if(value!=null)
+					result = value.getChildrenNames(Flag.SKIP_LOCKING);
+							
+				if(result!=null) {
+					for(TreeSegment<?> currSegment:result) {
+		    			if(!usedObjects.containsKey(currSegment.getSegment())) {
+		    				output.add(currSegment);
+		    			}
+		    		}       	 
+				}
+				
+				callback.onSuccess(output);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		},Flag.SKIP_LOCKING);				
+    }
+    
     public Boolean hasChildren(RestcommCluster cluster,TreeSegment<?> key,Boolean ignoreRollbackState)
 	{
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	if (!isTransactionUnavailable()) {
     		ConcurrentHashMap<TreeSegment<?>, TreeTxState> txMap;
     		if(key!=null && key instanceof RootTreeSegment)
@@ -497,8 +636,33 @@ public class InfinispanCache {
     	return false;
     }
     
+    public void hasChildrenAsync(RestcommCluster cluster,TreeSegment<?> key,AsyncCacheCallback<Boolean> callback)
+	{
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	getTreeCache().getNodeAsync(key,new AsyncCacheCallback<Node>() {
+			
+			@Override
+			public void onSuccess(Node value) {
+				if(value!=null)
+					callback.onSuccess(value.hasChildren(Flag.SKIP_LOCKING));
+				else
+					callback.onSuccess(false);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		},Flag.SKIP_LOCKING);
+    }
+    
     public Map<TreeSegment<?>,Object> getAllChildrenData(RestcommCluster cluster,TreeSegment<?> key,Boolean ignoreRollbackState)
 	{
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	Map<TreeSegment<?>,Object> childrenMap=new HashMap<TreeSegment<?>, Object>();
     	ConcurrentHashMap<Object, Boolean> usedObjects=new ConcurrentHashMap<Object, Boolean>();
     	
@@ -554,8 +718,44 @@ public class InfinispanCache {
     	return childrenMap;
     }
     
+    public void getAllChildrenDataAsync(RestcommCluster cluster,TreeSegment<?> key,AsyncCacheCallback<Map<TreeSegment<?>,Object>> callback)
+	{
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	getTreeCache().getNodeAsync(key,new AsyncCacheCallback<Node>() {			
+			@Override
+			public void onSuccess(Node value) {
+				Map<TreeSegment<?>,Object> childrenMap=new HashMap<TreeSegment<?>, Object>();
+		    	ConcurrentHashMap<Object, Boolean> usedObjects=new ConcurrentHashMap<Object, Boolean>();
+		    	
+		    	if(value!=null)
+	    		{
+					Set<Entry<TreeSegment<?>,Object>> result = value.getChildren(Flag.SKIP_LOCKING);
+		    		if(result!=null) {
+		    			for(Entry<TreeSegment<?>,Object> currEntry:result) {
+		    				if(!usedObjects.containsKey(currEntry.getKey().getSegment())) {
+			    	    		childrenMap.put(currEntry.getKey(),currEntry.getValue());		    				
+		    				}
+		    			}
+		    		}
+	    		}
+		    	
+		    	callback.onSuccess(childrenMap);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		},Flag.SKIP_LOCKING);
+    }
+    
     public Object treeGet(RestcommCluster cluster,TreeSegment<?> key, Boolean ignoreRollbackState) 
 	{
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	Object result = null;
     	//if (!isTransactionUnavailable()) {
 			TreeTxState state=retreiveTxState(key,true);
@@ -612,8 +812,33 @@ public class InfinispanCache {
 
     	return result;
 	}
+    
+    public void treeGetAsync(RestcommCluster cluster,TreeSegment<?> key,AsyncCacheCallback<Object> callback) 
+	{
+    	if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	getTreeCache().getNodeAsync(key.getParent(),new AsyncCacheCallback<Node>() {
+			
+			@Override
+			public void onSuccess(Node value) {
+				if(value!=null)
+					callback.onSuccess(value.get(key,Flag.SKIP_LOCKING));
+				else
+					callback.onSuccess(null);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		},Flag.SKIP_LOCKING);
+	}
 
 	public Boolean treeExists(RestcommCluster cluster,TreeSegment<?> key, Boolean ignoreRollbackState) {
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
 		boolean result = false;
 		//if (!ignoreRollbackState && !isTransactionUnavailable()) {
 			TreeTxState state=retreiveTxState(key,true);
@@ -673,8 +898,18 @@ public class InfinispanCache {
         return result;
 	}
 
+	public void treeExistsAsync(RestcommCluster cluster,TreeSegment<?> key,AsyncCacheCallback<Boolean> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	getTreeCache().existsAsync(key, callback, Flag.SKIP_LOCKING);
+	}
+	
 	public void treeRemove(RestcommCluster cluster, TreeSegment<?> key, Boolean ignoreRollbackState,Boolean useExecutor) {
-		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
 			if(!ignoreRollbackState && !isTransactionUnavailable()) {
 				registerTxForChanges(cluster);
     			TreeTxState txState=retreiveTxState(key,true);
@@ -696,8 +931,34 @@ public class InfinispanCache {
     	}   	
 	}
 	
+	public void treeRemoveAsync(RestcommCluster cluster, TreeSegment<?> key,AsyncCacheCallback<Void> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+    	getTreeCache().getNodeAsync(key.getParent(),new AsyncCacheCallback<Node>() {
+			
+			@Override
+			public void onSuccess(Node value) {
+				if(value!=null) {
+					value.removeChild(key);   
+					callback.onSuccess(null);
+				}
+				else
+					callback.onSuccess(null);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
+	}
+	
 	public void treeRemoveValue(RestcommCluster cluster, TreeSegment<?> key, Boolean ignoreRollbackState,Boolean useExecutor) {
-		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
 			if(!ignoreRollbackState && !isTransactionUnavailable()) {
 				registerTxForChanges(cluster);
     			TreeTxState txState=retreiveTxState(key,true);
@@ -718,9 +979,35 @@ public class InfinispanCache {
     		}
     	}
 	}
+	
+	public void treeRemoveValueAsync(RestcommCluster cluster, TreeSegment<?> key,AsyncCacheCallback<Void> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+		getTreeCache().getNodeAsync(key.getParent(),new AsyncCacheCallback<Node>() {
+			
+			@Override
+			public void onSuccess(Node value) {
+				if(value!=null) {
+					value.remove(key);   
+					callback.onSuccess(null);
+				}
+				else
+					callback.onSuccess(null);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
+	}
 
 	public Boolean treePut(RestcommCluster cluster,TreeSegment<?> key, Object value, Boolean ignoreRollbackState,Boolean useExecutor) {
-		Boolean result=false;
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	Boolean result=false;
 		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
     		if(!ignoreRollbackState && !isTransactionUnavailable()) {
 	    		registerTxForChanges(cluster);
@@ -748,9 +1035,34 @@ public class InfinispanCache {
 		
 		return result;    	
 	}
+	
+	public void treePutAsync(RestcommCluster cluster,TreeSegment<?> key, Object value,AsyncCacheCallback<Boolean> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+		getTreeCache().getNodeAsync(key.getParent(),new AsyncCacheCallback<Node>() {
+			@Override
+			public void onSuccess(Node node) {
+				if(node!=null) {
+					node.put(key, value, Flag.IGNORE_RETURN_VALUES);
+					callback.onSuccess(true);
+				}
+				else
+					callback.onSuccess(false);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
+	}
 
 	public TreePutIfAbsentResult treePutIfAbsent(RestcommCluster cluster,TreeSegment<?> key, Object value, Boolean ignoreRollbackState,Boolean useExecutor) {
-		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
     		if(!ignoreRollbackState && !isTransactionUnavailable()) {
 	    		registerTxForChanges(cluster);
 	    		TreeTxState currState=retreiveTxState(key,true);
@@ -781,8 +1093,35 @@ public class InfinispanCache {
 		return TreePutIfAbsentResult.OK;
 	}
 	
+	public void treePutIfAbsentAsync(RestcommCluster cluster,TreeSegment<?> key, Object value,AsyncCacheCallback<TreePutIfAbsentResult> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+		getTreeCache().getNodeAsync(key.getParent(),new AsyncCacheCallback<Node>() {
+			@Override
+			public void onSuccess(Node node) {
+				if(node!=null) {
+					if(node.putIfAbsent(key, value)!=null)
+						callback.onSuccess(TreePutIfAbsentResult.ALREADY_EXISTS);
+					else
+						callback.onSuccess(TreePutIfAbsentResult.OK);
+				}
+				else
+					callback.onSuccess(TreePutIfAbsentResult.PARENT_NOT_FOUND);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
+	}
+	
 	public Boolean treeCreate(RestcommCluster cluster,TreeSegment<?> key, Boolean ignoreRollbackState,Boolean useExecutor) {
-		Boolean result=false;
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	Boolean result=false;
 		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
     		if(!ignoreRollbackState && !isTransactionUnavailable()) {
     			registerTxForChanges(cluster);
@@ -816,8 +1155,33 @@ public class InfinispanCache {
 		return result;    	
 	}
 	
+	public void treeCreateAsync(RestcommCluster cluster,TreeSegment<?> key, AsyncCacheCallback<Boolean> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+		getTreeCache().getNodeAsync(key.getParent(),new AsyncCacheCallback<Node>() {
+			@Override
+			public void onSuccess(Node node) {
+				if(node!=null) {
+					node = node.addChild(key, false);
+					callback.onSuccess(node!=null);					
+				}
+				else
+					callback.onSuccess(false);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
+	}
+	
 	public Boolean treeMulti(RestcommCluster cluster,Map<TreeSegment<?>,Object> putItems,Boolean createParent,Boolean ignoreRollbackState) {
-		Boolean result=true;
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	Boolean result=true;
 		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
 			if(!ignoreRollbackState && !isTransactionUnavailable()) {
 				if(putItems!=null && putItems.size()>0) {
@@ -851,6 +1215,37 @@ public class InfinispanCache {
 		}
 		
 		return result;
+	}
+	
+	public void treeMultiAsync(RestcommCluster cluster,Map<TreeSegment<?>,Object> putItems,Boolean createParent,AsyncCacheCallback<Boolean> callback) {
+		if(!isAsync)
+    		throw new RuntimeException("Sync cache does not supports async operations");
+    	
+		if(putItems!=null && putItems.size()>0) {
+			Entry<TreeSegment<?>, Object> firstEntry=putItems.entrySet().iterator().next();
+			getTreeCache().getNodeAsync(firstEntry.getKey().getParent().getParent(),new AsyncCacheCallback<Node>() {
+				
+				@Override
+				public void onSuccess(Node parentNode) {
+					if(createParent && parentNode!=null)
+						parentNode = parentNode.addChild(firstEntry.getKey().getParent(), true);	
+					
+					Iterator<Entry<TreeSegment<?>, Object>>  iterator=putItems.entrySet().iterator();
+					while(iterator.hasNext())
+					{
+						Entry<TreeSegment<?>, Object> currEntry=iterator.next();
+						parentNode.put(currEntry.getKey(), currEntry.getValue(), Flag.IGNORE_RETURN_VALUES);
+					}
+				}
+				
+				@Override
+				public void onError(Throwable error) {
+					callback.onError(error);
+				}
+			});
+		}
+		else
+			callback.onSuccess(true);
 	}
 	
     public void treeMarkAsPreloaded(RestcommCluster cluster,Map<TreeSegment<?>,Object> putItems) {

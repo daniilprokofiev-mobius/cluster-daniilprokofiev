@@ -20,11 +20,12 @@
 package org.restcomm.cluster.data;
 
 
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.RestcommCluster;
 
 /**
  * 
- * Abstract class for a clustered {@link CacheData}.
+ * Abstract class for a clustered data.
  * 
  * @author martins
  * @author András Kőkuti
@@ -37,7 +38,7 @@ public class ClusteredCacheData<K,V> {
     
 	/**
 	 * @param key
-	 * @param cache
+	 * @param cluster
 	 */
 	public ClusteredCacheData(K key, RestcommCluster cluster) {
 		this.key=key;
@@ -49,12 +50,25 @@ public class ClusteredCacheData<K,V> {
 		return (V)cluster.get(key,false);		
 	}
 	
+	@SuppressWarnings("unchecked")
+	public void getValueAsync(AsyncCacheCallback<V> callback) {
+		cluster.getAsync(key,(AsyncCacheCallback<Object>) callback);		
+	}
+	
 	public void putValue(V value) {
 		cluster.put(key, value,false);		
 	}
 	
+	public void putValueAsync(V value,AsyncCacheCallback<Void> callback) {
+		cluster.putAsync(key, value, callback);	
+	}
+	
 	public Boolean putIfAbsent(V value) {
-		return cluster.putIfAbsent(key, value,false);		
+		return cluster.putIfAbsent(key, value, false);		
+	}
+	
+	public void putIfAbsentAsync(V value,AsyncCacheCallback<Boolean> callback) {
+		cluster.putIfAbsentAsync(key, value, callback);		
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -62,8 +76,17 @@ public class ClusteredCacheData<K,V> {
 	    return (V)cluster.remove(key,false,true);
 	}
 	
+	@SuppressWarnings("unchecked")
+	public void removeElementAsync(AsyncCacheCallback<V> callback) {
+	    cluster.removeAsync(key,true,(AsyncCacheCallback<Object>) callback);
+	}
+	
 	public void deleteElement() {
 	    cluster.remove(key,false,false);
+	}
+	
+	public void deleteElementAsync(AsyncCacheCallback<Object> callback) {
+	    cluster.removeAsync(key,false,callback);
 	}
 	
 	public K getKey() {
@@ -72,5 +95,9 @@ public class ClusteredCacheData<K,V> {
 
     public Boolean exists() {
         return cluster.exists(key,false);
+    }
+
+    public void existsAsync(AsyncCacheCallback<Boolean> callback) {
+        cluster.existsAsync(key,callback);
     }
 }

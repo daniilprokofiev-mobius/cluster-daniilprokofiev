@@ -52,8 +52,6 @@ public interface Node {
 	/**
 	 * Returns an immutable set of children node names.
 	 *
-	 * @return an immutable {@link Set} of child node names. Empty {@link Set} if
-	 *         there aren't any children.
 	 */
 	Set<TreeSegment<?>> getChildrenNames();
 
@@ -199,5 +197,5 @@ public interface Node {
 
 	void removeChildren();
 
-	void removeChildren(Flag... flags);
+	void removeChildren(Flag... flags);	
 }

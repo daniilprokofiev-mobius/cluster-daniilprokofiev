@@ -19,11 +19,14 @@
 
 package org.restcomm.cache.infinispan.tree;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.infinispan.AdvancedCache;
 import org.infinispan.atomic.AtomicMap;
 import org.infinispan.atomic.AtomicMapLookup;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.data.TreeSegment;
 /*
  * This is modified copy of infinispan implementation for tree
@@ -58,6 +61,20 @@ public class TreeStructureSupport {
 		return cache.containsKey(fqn);
 	}
 
+	public void existsAsync(TreeSegment<?> f, AsyncCacheCallback<Boolean> callback) {
+		existsAsync(cache, f, callback);
+	}
+	
+	protected void existsAsync(AdvancedCache<TreeSegment<?>, AtomicMap<Object, Object>> cache, TreeSegment<?> fqn,AsyncCacheCallback<Boolean> callback) {
+		CompletableFuture<Boolean> future = cache.containsKeyAsync(fqn);
+		future.whenComplete((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(r==null);
+    	});
+	}
+
 	/**
 	 * @return true if created, false if this was not necessary.
 	 */
@@ -75,6 +92,34 @@ public class TreeStructureSupport {
 			log.tracef("Created node %s", fqn);
 		
 		return true;
+	}
+
+	void createNodeInCacheAsync(TreeSegment<?> fqn,AsyncCacheCallback<Boolean> callback) {
+		createNodeInCacheAsync(cache, fqn, callback);
+	}
+
+	protected void createNodeInCacheAsync(AdvancedCache<TreeSegment<?>, AtomicMap<Object, Object>> cache, TreeSegment<?> fqn,AsyncCacheCallback<Boolean> callback) {
+		existsAsync(cache, fqn, new AsyncCacheCallback<Boolean>() {
+			
+			@Override
+			public void onSuccess(Boolean value) {
+				if(value!=null && value)
+					callback.onSuccess(false);
+				else {
+					getAtomicMap(cache, fqn);
+					
+					if (trace)
+						log.tracef("Created node %s", fqn);
+					
+					callback.onSuccess(true);
+				}					
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
 	}
 
 	protected AtomicMap<Object, Object> getStructure(AdvancedCache<TreeSegment<?>, AtomicMap<Object, Object>> cache, TreeSegment<?> fqn) {

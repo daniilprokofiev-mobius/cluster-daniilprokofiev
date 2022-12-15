@@ -40,6 +40,7 @@ import org.infinispan.notifications.cachelistener.annotation.CacheEntryRemoved;
 import org.infinispan.notifications.cachelistener.event.CacheEntryCreatedEvent;
 import org.infinispan.notifications.cachelistener.event.CacheEntryModifiedEvent;
 import org.infinispan.notifications.cachelistener.event.CacheEntryRemovedEvent;
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.ClusterElector;
 import org.restcomm.cluster.DataListener;
 import org.restcomm.cluster.DataRemovalListener;
@@ -317,6 +318,13 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		updateStats(ClusterOperation.GET, (System.currentTimeMillis()-startTime));
 		return result;
 	}
+
+    @Override
+	public void getAsync(Object key,AsyncCacheCallback<Object> callback) {
+    	long startTime=System.currentTimeMillis();
+		getCache().getAsync(this, key,callback);
+		updateStats(ClusterOperation.GET, (System.currentTimeMillis()-startTime));		
+	}
     
     @Override
 	public Boolean exists(Object key,Boolean ignoreRollbackState) {
@@ -327,6 +335,13 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
     }
     
     @Override
+	public void existsAsync(Object key,AsyncCacheCallback<Boolean> callback) {
+    	long startTime=System.currentTimeMillis();
+		getCache().existsAsync(this, key, callback);
+		updateStats(ClusterOperation.EXIST, (System.currentTimeMillis()-startTime));
+    }
+    
+    @Override
     public Object remove(Object key,Boolean ignoreRollbackState,Boolean returnValue) {
     	long startTime=System.currentTimeMillis();
 		Object result=getCache().remove(this, key, ignoreRollbackState, returnValue);
@@ -334,17 +349,40 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		return result;
     }
     
+    @Override
+    public void removeAsync(Object key,Boolean returnValue,AsyncCacheCallback<Object> callback) {
+    	long startTime=System.currentTimeMillis();
+		getCache().removeAsync(this, key, returnValue, callback);
+		updateStats(ClusterOperation.REMOVE, (System.currentTimeMillis()-startTime));		
+    }
+    
+    @Override
     public void put(Object key,Object value,Boolean ignoreRollbackState) {
     	long startTime=System.currentTimeMillis();
     	getCache().put(this, key, value, ignoreRollbackState);
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
     }
     
+    @Override
+    public void putAsync(Object key,Object value,AsyncCacheCallback<Void> callback) {
+    	long startTime=System.currentTimeMillis();
+    	getCache().putAsync(this, key, value, callback);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
+    }
+    
+    @Override
     public Boolean putIfAbsent(Object key,Object value,Boolean ignoreRollbackState) {
     	long startTime=System.currentTimeMillis();
 		Boolean result=getCache().putIfAbsent(this, key, value, ignoreRollbackState);  
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
 		return result;
+    }
+    
+    @Override
+    public void putIfAbsentAsync(Object key,Object value,AsyncCacheCallback<Boolean> callback) {
+    	long startTime=System.currentTimeMillis();
+		getCache().putIfAbsentAsync(this, key, value, callback);  
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
     }
     
     private InfinispanCache getCache() {
@@ -386,6 +424,18 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		return result;
 	}
 
+	@Override	
+	public void getAllChildsAsync(TreeSegment<?> key,AsyncCacheCallback<List<TreeSegment<?>>> callback)
+	{
+		long startTime=System.currentTimeMillis();
+		if(key!=null)
+			getCache().getAllChildsAsync(this, key, callback);
+		else
+			getCache().getAllChildsAsync(this, RootTreeSegment.INSTANCE, callback);
+		
+		updateStats(ClusterOperation.GET_ALL_KEYS, (System.currentTimeMillis()-startTime));		
+	}
+
 	@Override
 	public Boolean hasChildrenData(TreeSegment<?> key) {
 		if(key!=null)
@@ -393,10 +443,17 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		else
 			return getCache().hasChildren(this, RootTreeSegment.INSTANCE, false);	
 	}
+
+	@Override
+	public void hasChildrenDataAsync(TreeSegment<?> key,AsyncCacheCallback<Boolean> callback) {
+		if(key!=null)
+			getCache().hasChildrenAsync(this, key, callback);
+		else
+			getCache().hasChildrenAsync(this, RootTreeSegment.INSTANCE, callback);	
+	}
 	
 	@Override
-	public Map<TreeSegment<?>,Object> getAllChildrenData(TreeSegment<?> key,Boolean ignoreRollbackState)
-	{
+	public Map<TreeSegment<?>,Object> getAllChildrenData(TreeSegment<?> key,Boolean ignoreRollbackState) {
 		long startTime=System.currentTimeMillis();
 		Map<TreeSegment<?>,Object> result;
 		if(key!=null)
@@ -409,12 +466,29 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 	}
 	
 	@Override
-	public Object treeGet(TreeSegment<?> key, Boolean ignoreRollbackState) 
-	{
+	public void getAllChildrenDataAsync(TreeSegment<?> key, AsyncCacheCallback<Map<TreeSegment<?>,Object>> callback) {
+		long startTime=System.currentTimeMillis();
+		if(key!=null)
+			getCache().getAllChildrenDataAsync(this, key, callback);
+		else
+			getCache().getAllChildrenDataAsync(this, RootTreeSegment.INSTANCE, callback);
+		
+		updateStats(ClusterOperation.GET_ALL_ELEMENTS, (System.currentTimeMillis()-startTime));
+	}
+	
+	@Override
+	public Object treeGet(TreeSegment<?> key, Boolean ignoreRollbackState)  {
 		long startTime=System.currentTimeMillis();
 		Object result=getCache().treeGet(this, key, ignoreRollbackState);
 		updateStats(ClusterOperation.GET, (System.currentTimeMillis()-startTime));
 		return result;
+	}
+	
+	@Override
+	public void treeGetAsync(TreeSegment<?> key, AsyncCacheCallback<Object> callback)  {
+		long startTime=System.currentTimeMillis();
+		getCache().treeGetAsync(this, key, callback);
+		updateStats(ClusterOperation.GET, (System.currentTimeMillis()-startTime));		
 	}
 
 	@Override
@@ -426,6 +500,13 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 	}
 
 	@Override
+	public void treeExistsAsync(TreeSegment<?> key, AsyncCacheCallback<Boolean> callback) {
+		long startTime=System.currentTimeMillis();
+		getCache().treeExistsAsync(this, key, callback);
+		updateStats(ClusterOperation.EXIST, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
 	public void treeRemove(TreeSegment<?> key, Boolean ignoreRollbackState) {
 		long startTime=System.currentTimeMillis();
 		getCache().treeRemove(this, key, ignoreRollbackState, false);
@@ -433,9 +514,23 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 	}
 
 	@Override
+	public void treeRemoveAsync(TreeSegment<?> key, AsyncCacheCallback<Void> callback) {
+		long startTime=System.currentTimeMillis();
+		getCache().treeRemoveAsync(this, key, callback);
+		updateStats(ClusterOperation.REMOVE, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
 	public void treeRemoveValue(TreeSegment<?> key, Boolean ignoreRollbackState) {
 		long startTime=System.currentTimeMillis();
 		getCache().treeRemoveValue(this, key, ignoreRollbackState, false);
+		updateStats(ClusterOperation.REMOVE_VALUE, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
+	public void treeRemoveValueAsync(TreeSegment<?> key, AsyncCacheCallback<Void> callback) {
+		long startTime=System.currentTimeMillis();
+		getCache().treeRemoveValueAsync(this, key, callback);
 		updateStats(ClusterOperation.REMOVE_VALUE, (System.currentTimeMillis()-startTime));		
 	}
 
@@ -448,11 +543,25 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 	}
 
 	@Override
+	public void treePutAsync(TreeSegment<?> key, Object value, AsyncCacheCallback<Boolean> callback) {
+		long startTime=System.currentTimeMillis();
+		getCache().treePutAsync(this, key, value, callback);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
 	public TreePutIfAbsentResult treePutIfAbsent(TreeSegment<?> key, Object value, Boolean ignoreRollbackState) {
 		long startTime=System.currentTimeMillis();
 		TreePutIfAbsentResult result=getCache().treePutIfAbsent(this, key, value, ignoreRollbackState, false);
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
 		return result;
+	}
+
+	@Override
+	public void treePutIfAbsentAsync(TreeSegment<?> key, Object value, AsyncCacheCallback<TreePutIfAbsentResult> callback) {
+		long startTime=System.currentTimeMillis();
+		getCache().treePutIfAbsentAsync(this, key, value, callback);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
 	}
 	
 	@Override
@@ -461,6 +570,13 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		Boolean result=getCache().treeCreate(this, key, ignoreRollbackState, false);
 		updateStats(ClusterOperation.CREATE, (System.currentTimeMillis()-startTime));
 		return result;
+	}
+	
+	@Override
+	public void treeCreateAsync(TreeSegment<?> key, AsyncCacheCallback<Boolean> callback) {
+		long startTime=System.currentTimeMillis();
+		getCache().treeCreateAsync(this, key, callback);
+		updateStats(ClusterOperation.CREATE, (System.currentTimeMillis()-startTime));		
 	}
 
 	@Override
@@ -484,6 +600,30 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		return result;
 	}	
 
+	@Override
+	public void treeMultiAsync(Map<TreeSegment<?>,Object> putItems,Boolean createParent,AsyncCacheCallback<Boolean> callback) {
+		if(putItems==null || putItems.size()==0) {
+			callback.onSuccess(true);
+			return;
+		}
+		
+		Entry<TreeSegment<?>, Object> firstEntry=putItems.entrySet().iterator().next();
+		TreeSegment<?> parentKey=firstEntry.getKey().getParent();
+		Iterator<Entry<TreeSegment<?>, Object>>  iterator=putItems.entrySet().iterator();
+		while(iterator.hasNext())
+		{
+			Entry<TreeSegment<?>, Object> currEntry=iterator.next();
+			if(!currEntry.getKey().getParent().equals(parentKey)) {
+				callback.onSuccess(false);
+				return;
+			}
+		}
+		
+		long startTime=System.currentTimeMillis();
+		getCache().treeMultiAsync(this, putItems, createParent, callback);
+		updateStats(ClusterOperation.COMMIT, (System.currentTimeMillis()-startTime));		
+	}	
+
 	public void treeMarkAsPreloaded(Map<TreeSegment<?>,Object> putItems) {
 		if(putItems==null || putItems.size()==0)
 			return;
@@ -505,10 +645,20 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 	public List<TreeSegment<?>> getChildren(TreeSegment<?> key) {
 		return getAllChilds(key, false);		
 	}
+	
+	@Override
+	public void getChildrenAsync(TreeSegment<?> key,AsyncCacheCallback<List<TreeSegment<?>>> callback) {
+		getAllChildsAsync(key, callback);		
+	}
 
 	@Override
 	public Map<TreeSegment<?>,Object> getChildrenData(TreeSegment<?> key) {
 		return getAllChildrenData(key, false);		
+	}
+
+	@Override
+	public void getChildrenDataAsync(TreeSegment<?> key,AsyncCacheCallback<Map<TreeSegment<?>,Object>> callback) {
+		getAllChildrenDataAsync(key, callback);		
 	}
 
 	@Override

@@ -33,6 +33,7 @@ import org.infinispan.atomic.AtomicMap;
 import org.infinispan.commons.CacheConfigurationException;
 import org.infinispan.commons.CacheException;
 import org.infinispan.context.Flag;
+import org.restcomm.cluster.AsyncCacheCallback;
 import org.restcomm.cluster.IDGenerator;
 import org.restcomm.cluster.data.RootTreeSegment;
 import org.restcomm.cluster.data.TreeSegment;
@@ -90,11 +91,55 @@ public class TreeCacheImpl extends TreeStructureSupport implements TreeCache {
 	}
 
 	@Override
+	public void getNodeAsync(TreeSegment<?> fqn,AsyncCacheCallback<Node> callback) {
+		getNodeAsync(cache, fqn, callback);
+	}
+
+	@Override
+	public void getNodeAsync(TreeSegment<?> fqn,AsyncCacheCallback<Node> callback, Flag... flags) {
+		getNodeAsync(cache.withFlags(flags), fqn, callback);
+	}
+
+	private void getNodeAsync(AdvancedCache<TreeSegment<?>, AtomicMap<Object,Object>> cache, TreeSegment<?> fqn,AsyncCacheCallback<Node> callback) {
+		if(fqn.isRoot()) {
+			callback.onSuccess(new NodeImpl(this, fqn, cache));
+			return;
+		}
+		
+		final TreeCacheImpl me=this;
+		existsAsync(cache, fqn, new AsyncCacheCallback<Boolean>() {
+			
+			@Override
+			public void onSuccess(Boolean value) {
+				if(value!=null && value)
+					callback.onSuccess(new NodeImpl(me, fqn, cache));
+				else
+					callback.onSuccess(null);
+			}
+			
+			@Override
+			public void onError(Throwable error) {
+				callback.onError(error);
+			}
+		});
+	}
+
+	@Override
 	public boolean exists(TreeSegment<?> fqn, Flag... flags) {
 		if(fqn.isRoot())
 			return true;
 		
 		return exists(cache.withFlags(flags), fqn);
+	}
+
+	@Override
+	public void existsAsync(TreeSegment<?> fqn, AsyncCacheCallback<Boolean> callback, Flag... flags) {
+		if(fqn.isRoot()) {
+			callback.onSuccess(true);
+			return;
+		}
+		
+		existsAsync(cache.withFlags(flags), fqn, callback);
 	}
 
 	@Override

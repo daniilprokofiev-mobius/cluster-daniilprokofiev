@@ -30,7 +30,7 @@ public interface DataRemovalListener {
 
 	/**
 	 * Indicates that the data with the specified fqn was removed. 
-	 * @param clusteredCacheDataFqnWrapper
+	 * @param key
 	 */
 	//@SuppressWarnings("unchecked")
 	public void dataRemoved(Object key);
