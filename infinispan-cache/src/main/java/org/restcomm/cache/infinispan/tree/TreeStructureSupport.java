@@ -67,7 +67,7 @@ public class TreeStructureSupport {
 	
 	protected void existsAsync(AdvancedCache<TreeSegment<?>, AtomicMap<Object, Object>> cache, TreeSegment<?> fqn,AsyncCacheCallback<Boolean> callback) {
 		CompletableFuture<Boolean> future = cache.containsKeyAsync(fqn);
-		future.whenComplete((r, t) -> {
+		future.whenCompleteAsync(r, t) -> {
     		if(t!=null)
     			callback.onError(t);
     		else

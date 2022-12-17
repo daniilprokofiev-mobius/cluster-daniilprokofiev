@@ -269,7 +269,7 @@ public class InfinispanCache {
     		throw new RuntimeException("Sync cache does not supports async operations");
     	
     	CompletableFuture<Object> future = getNonTreeCache().withFlags(Flag.SKIP_LOCKING).getAsync(key);
-    	future.whenComplete((r, t) -> {
+    	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);
     		else
@@ -298,7 +298,7 @@ public class InfinispanCache {
     		throw new RuntimeException("Sync cache does not supports async operations");
     	
     	CompletableFuture<Boolean> future = getNonTreeCache().withFlags(Flag.SKIP_LOCKING).containsKeyAsync(key);
-    	future.whenComplete((r, t) -> {
+    	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);
     		else
@@ -345,7 +345,7 @@ public class InfinispanCache {
 		else
 			future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).removeAsync(key);    
     	
-    	future.whenComplete((r, t) -> {
+    	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);
     		else
@@ -381,7 +381,7 @@ public class InfinispanCache {
     		throw new RuntimeException("Sync cache does not supports async operations");
     	
     	CompletableFuture<Object> future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).putAsync(key, value);
-    	future.whenComplete((r, t) -> {
+    	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);
     		else
@@ -419,7 +419,7 @@ public class InfinispanCache {
     		throw new RuntimeException("Sync cache does not supports async operations");
     	
     	CompletableFuture<Object> future = getNonTreeCache().putIfAbsentAsync(key, value);
-    	future.whenComplete((r, t) -> {
+    	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);
     		else
