@@ -1249,6 +1249,9 @@ public class InfinispanCache {
 	}
 	
     public void treeMarkAsPreloaded(RestcommCluster cluster,Map<TreeSegment<?>,Object> putItems) {
+    	if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
     	if(putItems!=null && putItems.size()>0) {
     		Transaction tx=null;
     		try {
@@ -1304,7 +1307,10 @@ public class InfinispanCache {
 	}
 		
 	public void preload(RestcommCluster cluster,TreeSegment<?> key) {
-		if(isTransactionUnavailable())
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	if(isTransactionUnavailable())
 			return;
 		
 		registerTxForChanges(cluster);
@@ -1334,7 +1340,10 @@ public class InfinispanCache {
 	}
 	
 	public Boolean isPreloaded(TreeSegment<?> key) {
-		if(isTransactionUnavailable())
+		if(isAsync)
+    		throw new RuntimeException("Async cache does not supports sync operations");
+    	
+    	if(isTransactionUnavailable())
 			return false;
 		
 		TreeTxState state=retreiveTxState(key,true);

@@ -70,7 +70,7 @@ public class AsyncReplicatedCacheTest
 		Configurator.initialize(new DefaultConfiguration());
 	    Configurator.setRootLevel(Level.INFO);
 	    
-		transactionManager=new EmbeddedBaseTransactionManager();
+		transactionManager=null;	    
 		IDGenerator<UUID> generator=new UUIDGenerator();
 	    
 		CacheExecutorConfiguration configuration=new CacheExecutorConfiguration(16, 1000L, 1000L);
@@ -428,7 +428,8 @@ public class AsyncReplicatedCacheTest
 			assertEquals(data.get(expectedKeys.get(i)),expectedValues.get(i));
 		}
 		
-		assertEquals(removedCount.get(),15);
+		assertTrue(removedCount.get()>=10);
+		assertTrue(removedCount.get()<=20);
 		cluster.removeDataRemovalListener(drl);
 		cluster2.removeDataRemovalListener(drl);
 	}
