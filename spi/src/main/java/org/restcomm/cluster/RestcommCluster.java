@@ -335,6 +335,11 @@ public interface RestcommCluster {
 	public void putIfAbsentAsync(Object key,Object value,AsyncCacheCallback<Boolean> callback);
 		
 	/**
+	 * Returns count of elements currently in cache.
+	 */
+	public Integer getCount();
+	
+	/**
 	 * Returns all keys from cache.
 	 * @return Set<?>
 	 */

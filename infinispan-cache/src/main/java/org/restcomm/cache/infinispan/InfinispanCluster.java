@@ -389,6 +389,14 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
     	return localCache;
     }   
     
+    public Integer getCount()
+    {
+    	long startTime=System.currentTimeMillis();
+    	Integer result=localCache.getCount();
+    	updateStats(ClusterOperation.GET_ALL_KEYS, (System.currentTimeMillis()-startTime));
+    	return result;
+    }  
+    
     public Set<?> getAllKeys()
     {
     	long startTime=System.currentTimeMillis();

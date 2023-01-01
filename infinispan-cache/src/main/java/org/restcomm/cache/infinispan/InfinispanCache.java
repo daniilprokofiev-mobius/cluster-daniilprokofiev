@@ -428,6 +428,13 @@ public class InfinispanCache {
     }
 
     /*
+     * Retreives count of the keys stored in specific cache beware of using this operation , its very very expensive
+     */
+    public Integer getCount() {
+    	return getNonTreeCache().withFlags(Flag.SKIP_LOCKING).keySet().size();        
+    }
+    
+    /*
      * Retreives all the keys stored in specific cache beware of using this operation , its very very expensive
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -502,7 +509,7 @@ public class InfinispanCache {
         if (logger.isInfoEnabled()) {
             logger.info("Restcomm Cache " + name + " stopped.");
         }
-    }   
+    }
     
     public List<TreeSegment<?>> getAllChilds(RestcommCluster cluster,TreeSegment<?> key,Boolean ignoreRollbackState)
 	{
