@@ -29,8 +29,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
@@ -52,6 +54,13 @@ import org.infinispan.configuration.global.GlobalConfiguration;
 import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.global.ShutdownHookBehavior;
 import org.infinispan.context.Flag;
+import org.infinispan.counter.EmbeddedCounterManagerFactory;
+import org.infinispan.counter.api.CounterConfiguration;
+import org.infinispan.counter.api.CounterManager;
+import org.infinispan.counter.api.CounterType;
+import org.infinispan.counter.api.Storage;
+import org.infinispan.counter.configuration.CounterManagerConfigurationBuilder;
+import org.infinispan.counter.configuration.Reliability;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.transaction.LockingMode;
@@ -105,8 +114,11 @@ public class InfinispanCache {
     
     private AtomicBoolean isStarted = new AtomicBoolean(false);
     private DefaultCacheManager jBossCacheContainer;
+    private CounterConfiguration counterConfiguration;
+    private CounterManager counterManager;
+    private ConcurrentHashMap<String,AtomicLong> localCounters=new ConcurrentHashMap<String, AtomicLong>();    
+    private TransactionManager txMgr;  
     
-    private TransactionManager txMgr;    
     public InfinispanCache(String name, DefaultCacheManager jBossCacheContainer, TransactionManager txMgr, ClassLoader classLoader, CacheDataExecutorService cacheDataExecutorService,IDGenerator<?> generator,Boolean isTree,Boolean logStats) {
         this.cacheDataExecutorService = cacheDataExecutorService;
         this.jBossCacheContainer=jBossCacheContainer;
@@ -129,6 +141,7 @@ public class InfinispanCache {
 		this.isTree=isTree;
         this.name = name;
         
+        counterConfiguration = CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG).initialValue(0).storage(Storage.VOLATILE).build();		
         Thread.currentThread().setContextClassLoader(currentClassLoader);
     }
 
@@ -154,7 +167,10 @@ public class InfinispanCache {
 			else
 				defaultConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
 						
-			GlobalConfigurationBuilder gcBuilder=new GlobalConfigurationBuilder();
+			GlobalConfigurationBuilder gcBuilder=new GlobalConfigurationBuilder();	
+			CounterManagerConfigurationBuilder counterBuilder = gcBuilder.addModule(CounterManagerConfigurationBuilder.class);
+		    counterBuilder.numOwner(copies).reliability(Reliability.AVAILABLE);
+		    
 			gcBuilder.defaultCacheName("slee-default").transport().clusterName("restcomm").defaultTransport().globalJmxStatistics().disable().shutdown().hookBehavior(ShutdownHookBehavior.DONT_REGISTER);			
 			if(serializer!=null) {
 				if(!(serializer instanceof JbossSerializer))
@@ -193,8 +209,11 @@ public class InfinispanCache {
             }
             else {
             	this.jbossCache = jBossCacheContainer.getCache(name).getAdvancedCache();
-            	cache=this.jbossCache;            	
-            }                    
+            	cache=this.jbossCache;  
+            	
+            	if(!localMode)
+                	counterManager = EmbeddedCounterManagerFactory.asCounterManager(jBossCacheContainer);                                
+            }
             
             if(isTree) {
 	            TreeCacheFactory tcf = new TreeCacheFactory();
@@ -369,7 +388,7 @@ public class InfinispanCache {
          * Infinispan returns invalid state exception while expecting to do nothing on set there modifying the logic to simply
          * ignore rolledback transaction
          */
-        
+            	
     	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {    		
     		getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).put(key, value);    		    	
     	} else if(!isCurrentTransactionInRollback())
@@ -432,6 +451,26 @@ public class InfinispanCache {
      */
     public Integer getCount() {
     	return getNonTreeCache().withFlags(Flag.SKIP_LOCKING).keySet().size();        
+    }
+    
+    /*
+     * Clears the cache storage completely
+     */
+    public void clear() {
+    	getNonTreeCache().clear();
+    }
+    
+    /*
+     * Clears the cache storage completely asynchronously
+     */
+    public void clearAsync(AsyncCacheCallback<Void> callback) {
+    	CompletableFuture<Void> future = getNonTreeCache().clearAsync();
+    	future.whenCompleteAsync((r, t) -> {
+    		if(t!=null)
+    			callback.onError(t);
+    		else
+    			callback.onSuccess(r);
+    	});    	    	
     }
     
     /*
@@ -1617,4 +1656,164 @@ public class InfinispanCache {
 		public void cancel() {			
 		}		
 	}	
+	
+	public Long getAtomicValue(String name) 
+	{
+		if(counterManager!=null) {
+			if(!counterManager.isDefined(name)) {
+				counterManager.defineCounter(name, counterConfiguration);
+			}
+			
+			CompletableFuture<Long> future = counterManager.getStrongCounter(name).getValue();
+			try {			
+				return future.get();
+			}
+			catch(ExecutionException | InterruptedException ex) {
+				throw new RuntimeException("An error occured while waiting for get atomic value result," + ex.getMessage(), ex);		    	
+			}
+		}
+		else {
+			AtomicLong localValue=localCounters.get(name);
+			if(localValue==null) {
+				localValue=new AtomicLong(0L);
+				AtomicLong oldValue=localCounters.putIfAbsent(name, localValue);
+				if(oldValue!=null)
+					localValue=oldValue;
+			}
+			
+			return localValue.get();
+		}
+	}
+
+	public void getAtomicValueAsync(String name,AsyncCacheCallback<Long> callback) 
+	{
+		if(counterManager!=null) {
+			if(!counterManager.isDefined(name)) {
+				counterManager.defineCounter(name, counterConfiguration);
+			}
+			
+			CompletableFuture<Long> future = counterManager.getStrongCounter(name).getValue();
+			future.whenCompleteAsync((r, t) -> {
+	    		if(t!=null)
+	    			callback.onError(t);
+	    		else
+	    			callback.onSuccess(r);
+	    	});
+		}
+		else {
+			AtomicLong localValue=localCounters.get(name);
+			if(localValue==null) {
+				localValue=new AtomicLong(0L);
+				AtomicLong oldValue=localCounters.putIfAbsent(name, localValue);
+				if(oldValue!=null)
+					localValue=oldValue;
+			}
+			
+			callback.onSuccess(localValue.get());	
+		}
+	}
+
+	public Long addAndGetAtomicValue(String name, Long delta) 
+	{
+		if(counterManager!=null) {
+			if(!counterManager.isDefined(name)) {
+				counterManager.defineCounter(name, counterConfiguration);
+			}
+			
+			CompletableFuture<Long> future = counterManager.getStrongCounter(name).addAndGet(delta);
+			try {			
+				return future.get();
+			}
+			catch(ExecutionException | InterruptedException ex) {
+				throw new RuntimeException("An error occured while waiting for get atomic value result," + ex.getMessage(), ex);		    	
+			}
+		}
+		else {
+			AtomicLong localValue=localCounters.get(name);
+			if(localValue==null) {
+				localValue=new AtomicLong(0L);
+				AtomicLong oldValue=localCounters.putIfAbsent(name, localValue);
+				if(oldValue!=null)
+					localValue=oldValue;
+			}
+			
+			return localValue.addAndGet(delta);
+		}
+	}
+
+	public void addAndGetAtomicValueAsync(String name, Long delta,AsyncCacheCallback<Long> callback) 
+	{
+		if(counterManager!=null) {
+			if(!counterManager.isDefined(name)) {
+				counterManager.defineCounter(name, counterConfiguration);
+			}
+			
+			CompletableFuture<Long> future = counterManager.getStrongCounter(name).addAndGet(delta);
+			future.whenCompleteAsync((r, t) -> {
+	    		if(t!=null)
+	    			callback.onError(t);
+	    		else
+	    			callback.onSuccess(r);
+	    	});
+		}
+		else {
+			AtomicLong localValue=localCounters.get(name);
+			if(localValue==null) {
+				localValue=new AtomicLong(0L);
+				AtomicLong oldValue=localCounters.putIfAbsent(name, localValue);
+				if(oldValue!=null)
+					localValue=oldValue;
+			}
+			
+			callback.onSuccess(localValue.addAndGet(delta));	
+		}
+	}
+
+	public Boolean compareAndSetAtomicValue(String name, Long oldValue, Long newValue) 
+	{
+		if(counterManager!=null) {
+			CompletableFuture<Boolean> future = counterManager.getStrongCounter(name).compareAndSet(oldValue, newValue);
+			try {			
+				return future.get();
+			}
+			catch(ExecutionException | InterruptedException ex) {
+				throw new RuntimeException("An error occured while waiting for get atomic value result," + ex.getMessage(), ex);		    	
+			}
+		}
+		else {
+			AtomicLong localValue=localCounters.get(name);
+			if(localValue==null) {
+				localValue=new AtomicLong(0L);
+				AtomicLong oldAtomic=localCounters.putIfAbsent(name, localValue);
+				if(oldAtomic!=null)
+					localValue=oldAtomic;
+			}
+			
+			return localValue.compareAndSet(oldValue,newValue);
+		}
+	}
+
+	public void compareAndSetAtomicValueAsync(String name, Long oldValue, Long newValue,AsyncCacheCallback<Boolean> callback) 
+	{
+		if(counterManager!=null) {
+			CompletableFuture<Boolean> future = counterManager.getStrongCounter(name).compareAndSet(oldValue,newValue);
+			future.whenCompleteAsync((r, t) -> {
+	    		if(t!=null)
+	    			callback.onError(t);
+	    		else
+	    			callback.onSuccess(r);
+	    	});
+		}
+		else {
+			AtomicLong localValue=localCounters.get(name);
+			if(localValue==null) {
+				localValue=new AtomicLong(0L);
+				AtomicLong oldAtomic=localCounters.putIfAbsent(name, localValue);
+				if(oldAtomic!=null)
+					localValue=oldAtomic;
+			}
+			
+			callback.onSuccess(localValue.compareAndSet(oldValue,newValue));
+		}
+	}
 }

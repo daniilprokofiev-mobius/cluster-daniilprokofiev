@@ -504,7 +504,6 @@ public class FaultTolerantScheduler {
 					recover(curr.getValue());
 				}
 			}
-		}
-		
+		}		
 	}
 }

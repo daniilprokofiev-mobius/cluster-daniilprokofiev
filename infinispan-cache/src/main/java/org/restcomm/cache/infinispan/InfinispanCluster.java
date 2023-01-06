@@ -772,4 +772,71 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 				entryModified(event.getKey());			
 		}
 	}
+
+	@Override
+	public void clear() 
+	{
+		long startTime=System.currentTimeMillis();
+    	localCache.clear();
+    	updateStats(ClusterOperation.GET_ALL_KEYS, (System.currentTimeMillis()-startTime));    	
+	}
+
+	@Override
+	public void clearAsync(AsyncCacheCallback<Void> callback) 
+	{
+		long startTime=System.currentTimeMillis();
+    	localCache.clearAsync(callback);
+    	updateStats(ClusterOperation.GET_ALL_KEYS, (System.currentTimeMillis()-startTime));    	
+	}
+
+	@Override
+	public Long getAtomicValue(String name) 
+	{
+		long startTime=System.currentTimeMillis();
+    	Long result=getCache().getAtomicValue(name);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public void getAtomicValueAsync(String name,AsyncCacheCallback<Long> callback) 
+	{
+		long startTime=System.currentTimeMillis();
+    	getCache().getAtomicValueAsync(name,callback);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
+	}
+
+	@Override
+	public Long addAndGetAtomicValue(String name, Long delta) 
+	{
+		long startTime=System.currentTimeMillis();
+    	Long result=getCache().addAndGetAtomicValue(name, delta);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
+		return result;
+	}
+
+	@Override
+	public void addAndGetAtomicValueAsync(String name, Long delta,AsyncCacheCallback<Long> callback) 
+	{
+		long startTime=System.currentTimeMillis();
+    	getCache().addAndGetAtomicValueAsync(name, delta, callback);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));	
+	}
+
+	@Override
+	public Boolean compareAndSetAtomicValue(String name, Long oldValue, Long newValue) 
+	{
+		long startTime=System.currentTimeMillis();
+    	Boolean result=getCache().compareAndSetAtomicValue(name, oldValue, newValue);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));	
+		return result;
+	}
+
+	@Override
+	public void compareAndSetAtomicValueAsync(String name, Long oldValue, Long newValue,AsyncCacheCallback<Boolean> callback) 
+	{
+		long startTime=System.currentTimeMillis();
+    	getCache().compareAndSetAtomicValueAsync(name, oldValue, newValue, callback);
+		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));	
+	}
 }

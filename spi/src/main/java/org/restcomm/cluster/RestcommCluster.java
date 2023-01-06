@@ -340,6 +340,46 @@ public interface RestcommCluster {
 	public Integer getCount();
 	
 	/**
+	 * Clears all elements in cache
+	 */
+	public void clear();
+	
+	/**
+	 * Clears all elements in cache asynchronously
+	 */
+	public void clearAsync(AsyncCacheCallback<Void> callback);
+	
+	/**
+	 * Gets atomic value
+	 */
+	public Long getAtomicValue(String name);
+	
+	/**
+	 * Gets atomic value async
+	 */
+	public void getAtomicValueAsync(String name,AsyncCacheCallback<Long> callback);
+	
+	/**
+	 * adds the delta to atomic value and returns new value
+	 */
+	public Long addAndGetAtomicValue(String name, Long delta);
+	
+	/**
+	 * adds the delta to atomic value and returns new value async
+	 */
+	public void addAndGetAtomicValueAsync(String name, Long delta,AsyncCacheCallback<Long> callback);
+	
+	/**
+	 * compares the atomic value and set the new value if old value matches
+	 */
+	public Boolean compareAndSetAtomicValue(String name, Long oldValue, Long newValue);
+	
+	/**
+	 * compares the atomic value and set the new value if old value matches
+	 */
+	public void compareAndSetAtomicValueAsync(String name, Long oldValue, Long newValue,AsyncCacheCallback<Boolean> callback);
+	
+	/**
 	 * Returns all keys from cache.
 	 * @return Set<?>
 	 */

@@ -24,6 +24,11 @@
 			<groupId>org.infinispan</groupId>
 			<artifactId>infinispan-core</artifactId>
 			<version>${version.infinispan}</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.infinispan</groupId>
+		    <artifactId>infinispan-clustered-counter</artifactId>
+		    <version>${version.infinispan}</version>
 		</dependency>		
 		<dependency>
 		    <groupId>com.esotericsoftware.kryo</groupId>
