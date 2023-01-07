@@ -170,8 +170,7 @@ public class InfinispanCache {
 			GlobalConfigurationBuilder gcBuilder=new GlobalConfigurationBuilder();	
 			CounterManagerConfigurationBuilder counterBuilder = gcBuilder.addModule(CounterManagerConfigurationBuilder.class);
 		    counterBuilder.numOwner(copies).reliability(Reliability.AVAILABLE);
-		    
-			gcBuilder.defaultCacheName("slee-default").transport().clusterName("restcomm").defaultTransport().globalJmxStatistics().disable().shutdown().hookBehavior(ShutdownHookBehavior.DONT_REGISTER);			
+		    gcBuilder.defaultCacheName("slee-default").transport().clusterName("restcomm").defaultTransport().globalJmxStatistics().disable().shutdown().hookBehavior(ShutdownHookBehavior.DONT_REGISTER);			
 			if(serializer!=null) {
 				if(!(serializer instanceof JbossSerializer))
 					gcBuilder.serialization().marshaller(new InfinispanMarshaller(serializer));
@@ -183,8 +182,7 @@ public class InfinispanCache {
 			gcBuilder.serialization().addAdvancedExternalizer(ClusteredUUIDExternalizer.EXTERNALIZER_ID, new ClusteredUUIDExternalizer());
 			gcBuilder.serialization().addAdvancedExternalizer(ClusteredIDAndStringKey.EXTERNALIZER_ID, new ExternalizableExternalizer(ClusteredIDAndStringKey.class,ClusteredIDAndStringKey.EXTERNALIZER_ID));
 			gcBuilder.serialization().addAdvancedExternalizer(StringAndClusteredIDKey.EXTERNALIZER_ID, new ExternalizableExternalizer(StringAndClusteredIDKey.class,StringAndClusteredIDKey.EXTERNALIZER_ID));
-			gcBuilder.serialization().addAdvancedExternalizer(MultiStringKey.EXTERNALIZER_ID, new ExternalizableExternalizer(MultiStringKey.class,MultiStringKey.EXTERNALIZER_ID));
-			
+			gcBuilder.serialization().addAdvancedExternalizer(MultiStringKey.EXTERNALIZER_ID, new ExternalizableExternalizer(MultiStringKey.class,MultiStringKey.EXTERNALIZER_ID));			
 			GlobalConfiguration globalConfig = gcBuilder.build();			
 			jBossCacheContainer=new DefaultCacheManager(globalConfig, defaultConfig, false);
 		}
@@ -193,7 +191,7 @@ public class InfinispanCache {
 			GlobalConfiguration globalLocalConfig = new GlobalConfigurationBuilder().defaultCacheName("slee-default-local").globalJmxStatistics().disable().shutdown().hookBehavior(ShutdownHookBehavior.DONT_REGISTER).build();
 			jBossCacheContainer=new DefaultCacheManager(globalLocalConfig, defaultLocalConfig, false);			
 		}
-						
+					
 		return jBossCacheContainer;
     }
     
@@ -211,8 +209,9 @@ public class InfinispanCache {
             	this.jbossCache = jBossCacheContainer.getCache(name).getAdvancedCache();
             	cache=this.jbossCache;  
             	
-            	if(!localMode)
-                	counterManager = EmbeddedCounterManagerFactory.asCounterManager(jBossCacheContainer);                                
+            	if(!localMode) {
+            		counterManager = EmbeddedCounterManagerFactory.asCounterManager(jBossCacheContainer);                                
+            	}
             }
             
             if(isTree) {

@@ -19,18 +19,10 @@ package org.restcomm.cache.infinispan;
  */
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 
 import javax.transaction.HeuristicMixedException;
 import javax.transaction.HeuristicRollbackException;
@@ -51,7 +43,6 @@ import org.restcomm.cluster.CacheExecutorConfiguration;
 import org.restcomm.cluster.IDGenerator;
 import org.restcomm.cluster.RestcommCluster;
 import org.restcomm.cluster.UUIDGenerator;
-import org.restcomm.cluster.data.ClusteredCacheData;
 
 public class NonReplicatedCountersTest 
 {

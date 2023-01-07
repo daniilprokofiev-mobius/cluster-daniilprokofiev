@@ -22,6 +22,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.SerializedLambda;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,8 @@ import org.restcomm.cluster.data.StringTreeSegment;
 import com.esotericsoftware.kryo.kryo5.Kryo;
 import com.esotericsoftware.kryo.kryo5.io.Input;
 import com.esotericsoftware.kryo.kryo5.io.Output;
+import com.esotericsoftware.kryo.kryo5.serializers.ClosureSerializer;
+import com.esotericsoftware.kryo.kryo5.serializers.ClosureSerializer.Closure;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -90,6 +93,8 @@ public class KryoSerializer implements Serializer {
         	localValue.setInstantiatorStrategy(new KryoDefaultInitiatorStrategy(cacheDataExecutorService, new KryoDefaultSerialingInitiatorStrategy(cacheDataExecutorService)));
         	localValue.addDefaultSerializer(Externalizable.class, KryoExternalizableSerializer.class);
         	localValue.setClassLoader(classLoader);
+        	localValue.register(SerializedLambda.class);
+        	localValue.register(Closure.class, new ClosureSerializer()); 
         	if(registerClusteredID) {
         		Iterator<Entry<Integer, Class<?>>> iterator=registeredClasses.entrySet().iterator();
         		while(iterator.hasNext()) {

@@ -62,7 +62,7 @@ public class FailoverCacheTest
 		InfinispanCacheFactory factory2=new InfinispanCacheFactory(transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true),generator,Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
 		RestcommCluster cluster2=factory2.getCluster("testf", false);
 		cluster2.startCluster(true);
-		
+	    
 		AtomicInteger removedCount=new AtomicInteger(0);
 		FailOverListener fol=new FailOverListener() {
 			

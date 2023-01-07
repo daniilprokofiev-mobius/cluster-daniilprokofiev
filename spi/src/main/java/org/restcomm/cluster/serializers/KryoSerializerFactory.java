@@ -52,7 +52,7 @@ public class KryoSerializerFactory extends BaseSerializerFactory<FieldSerializer
 	public FieldSerializerConfig getConfig () {
 		return config;
 	}
-
+	
 	@SuppressWarnings("rawtypes")
 	public FieldSerializer<?> newSerializer (Kryo kryo, Class type) {
 		FactoryCallback callback=new FactoryCallback();
