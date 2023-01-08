@@ -162,6 +162,12 @@ public class InfinispanCache {
 				else
 					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.REPL_ASYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
 			} 
+			else if(txMgr==null) {
+				if(isParititioned)				
+					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+				else
+					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+			}
 			else if(isParititioned)				
 				defaultConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
 			else
@@ -1299,6 +1305,9 @@ public class InfinispanCache {
     	
     	if(putItems!=null && putItems.size()>0) {
     		Transaction tx=null;
+    		if(txMgr==null)
+    			return;
+    		
     		try {
     			tx=txMgr.getTransaction();
     		} catch (SystemException e) {
@@ -1447,6 +1456,9 @@ public class InfinispanCache {
 	
     private boolean isTransactionUnavailable() {
         boolean result = false;
+        if(txMgr==null)
+        	return true;
+        
         try {        	
         	//int transactionStatus = restcommCache.getJBossCache().getAdvancedCache().getTransactionManager().getStatus();
         	int transactionStatus = txMgr.getStatus();
@@ -1460,6 +1472,9 @@ public class InfinispanCache {
 	
     private boolean isCurrentTransactionInRollbackOrCommitted() {
         boolean result = false;
+        if(txMgr==null)
+        	return false;
+        
         try {        	
         	//int transactionStatus = restcommCache.getJBossCache().getAdvancedCache().getTransactionManager().getStatus();
         	int transactionStatus = txMgr.getStatus();
@@ -1473,6 +1488,9 @@ public class InfinispanCache {
 	
     private boolean isCurrentTransactionInRollback() {
         boolean result = false;
+        if(txMgr==null)
+        	return false;
+        
         try {        	
         	//int transactionStatus = restcommCache.getJBossCache().getAdvancedCache().getTransactionManager().getStatus();
         	int transactionStatus = txMgr.getStatus();
@@ -1486,7 +1504,10 @@ public class InfinispanCache {
     
     private ConcurrentHashMap<TreeSegment<?>, TreeTxState> registerTxForChanges(RestcommCluster cluster) {
 		Transaction tx=null;
-		try {
+		if(txMgr==null)
+			throw new IllegalStateException("Unable to register listener for created transaction. Error: tx not found");
+		
+        try {
 			tx=txMgr.getTransaction();
 		} catch (SystemException e) {
 			throw new IllegalStateException("Unable to register listener for created transaction. Error: "+e.getMessage());
@@ -1511,6 +1532,9 @@ public class InfinispanCache {
 	
 	private TreeTxState retreiveTxState(TreeSegment<?> segment,Boolean markNoopIfNotExists) {
 		Transaction tx=null;
+		if(txMgr==null)
+        	return null;
+        
 		try {
 			tx=txMgr.getTransaction();
 		} catch (SystemException e) {
@@ -1560,6 +1584,9 @@ public class InfinispanCache {
 	
 	private ConcurrentHashMap<TreeSegment<?>,TreeTxState> retreiveTxStateChilds(TreeSegment<?> segment) {
 		Transaction tx=null;
+		if(txMgr==null)
+        	return null;
+        
 		try {
 			tx=txMgr.getTransaction();
 		} catch (SystemException e) {

@@ -277,8 +277,8 @@ public class FaultTolerantScheduler {
 		// store the task and data
 		final TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster);
 		if (timerTaskCacheData.putIfAbsent(taskData)) {
-			if (logger.isInfoEnabled()) {
-				logger.info("Stored task data " + taskID);
+			if (logger.isDebugEnabled()) {
+				logger.debug("Stored task data " + taskID);
 			}			
 		} else if(checkIfAlreadyPresent) {
             throw new IllegalStateException("timer task " + taskID + " already scheduled");
