@@ -1,3 +1,4 @@
+package org.restcomm.cluster.data;
 /*
  * Copyright 2022-2023, Mobius Software LTD. and individual contributors
  * by the @authors tag. See the copyright.txt in the distribution for a
