@@ -77,11 +77,11 @@ public class ReplicatedTreeCacheKryoSerializerTest
 	    IDGenerator<UUID> generator=new UUIDGenerator();
 	    
 		CacheExecutorConfiguration configuration=new CacheExecutorConfiguration(16, 1000L, 1000L);
-		factory=new InfinispanCacheFactory(transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
+		factory=new InfinispanCacheFactory("mobius", transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
 		cluster=factory.getCluster("testtrk", true);
 		cluster.startCluster(false);		
 		
-		factory2=new InfinispanCacheFactory(transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
+		factory2=new InfinispanCacheFactory("mobius", transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
 		cluster2=factory2.getCluster("testtrk", true);
 		cluster2.startCluster(false);
 	}

@@ -148,7 +148,7 @@ public class InfinispanCache {
         Thread.currentThread().setContextClassLoader(currentClassLoader);
     }
 
-    public static DefaultCacheManager initContainer(TransactionManager txMgr,Serializer serializer,Boolean isAsync, Boolean isReplicated,Boolean isParititioned,Integer copies,Integer aquireTimeout) {
+    public static DefaultCacheManager initContainer(String clusterName, TransactionManager txMgr,Serializer serializer,Boolean isAsync, Boolean isReplicated,Boolean isParititioned,Integer copies,Integer aquireTimeout) {
     	DefaultCacheManager jBossCacheContainer;
     	TransactionManagerLookup txLookup=new TransactionManagerLookup() {				
 			@Override
@@ -179,7 +179,7 @@ public class InfinispanCache {
 			GlobalConfigurationBuilder gcBuilder=new GlobalConfigurationBuilder();	
 			CounterManagerConfigurationBuilder counterBuilder = gcBuilder.addModule(CounterManagerConfigurationBuilder.class);
 		    counterBuilder.numOwner(copies).reliability(Reliability.AVAILABLE);
-		    gcBuilder.defaultCacheName("slee-default").transport().clusterName("restcomm").defaultTransport().globalJmxStatistics().disable().shutdown().hookBehavior(ShutdownHookBehavior.DONT_REGISTER);			
+		    gcBuilder.defaultCacheName("slee-default").transport().clusterName(clusterName).defaultTransport().globalJmxStatistics().disable().shutdown().hookBehavior(ShutdownHookBehavior.DONT_REGISTER);			
 			if(serializer!=null) {
 				if(!(serializer instanceof JbossSerializer))
 					gcBuilder.serialization().marshaller(new InfinispanMarshaller(serializer));

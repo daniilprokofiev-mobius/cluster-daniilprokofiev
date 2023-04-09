@@ -42,18 +42,18 @@ public class RestcommClusterFactory {
 	private CacheDataExecutorService service;
 	private Serializer serializer;
 	
-	public RestcommClusterFactory(String clusterType,SerializationType serializationType, TransactionManager transactionManager, ClassLoader classLoader, CacheExecutorConfiguration executorConfiguration,Integer aquireTimeout,List<String> hosts,Integer port,List<String> zkHosts,Integer zkPort,Integer maxBufferSize, Boolean isAsync, Boolean paritioned, Integer copies, Boolean logStats) {
+	public RestcommClusterFactory(String clusterName, String clusterType,SerializationType serializationType, TransactionManager transactionManager, ClassLoader classLoader, CacheExecutorConfiguration executorConfiguration,Integer aquireTimeout,List<String> hosts,Integer port,List<String> zkHosts,Integer zkPort,Integer maxBufferSize, Boolean isAsync, Boolean paritioned, Integer copies, Boolean logStats) {
 		this.idGenerator=new UUIDGenerator();
 		
 		this.service=new CacheDataExecutorService(executorConfiguration, idGenerator, classLoader);
 		this.serializer=SerializerFactory.createSerializer(serializationType, classLoader, service);		
 		switch(clusterType) {
 			case "INFINISPAN_REPLICATED":
-				cacheFactory=new InfinispanCacheFactory(transactionManager, serializer, idGenerator, classLoader,service,aquireTimeout, isAsync, true, paritioned, copies, logStats);
+				cacheFactory=new InfinispanCacheFactory(clusterName, transactionManager, serializer, idGenerator, classLoader,service,aquireTimeout, isAsync, true, paritioned, copies, logStats);
 				break;
 			case "INFINISPAN_LOCAL":
 			default:
-				cacheFactory=new InfinispanCacheFactory(transactionManager, serializer, idGenerator, classLoader,service,aquireTimeout, isAsync, false, paritioned, copies, logStats);
+				cacheFactory=new InfinispanCacheFactory(clusterName, transactionManager, serializer, idGenerator, classLoader,service,aquireTimeout, isAsync, false, paritioned, copies, logStats);
 				break;			
 		}
 	}
