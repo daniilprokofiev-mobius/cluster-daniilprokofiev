@@ -38,14 +38,16 @@ import org.restcomm.cluster.RestcommCluster;
 public class ClusteredCacheData<K,V> {
 	private K key;
     private RestcommCluster cluster;
+    private Long maxIdleMs;
     
 	/**
 	 * @param key
 	 * @param cluster
 	 */
-	public ClusteredCacheData(K key, RestcommCluster cluster) {
+	public ClusteredCacheData(K key, RestcommCluster cluster,Long maxIdleMs) {
 		this.key=key;
 		this.cluster=cluster;
+		this.maxIdleMs=maxIdleMs;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -59,19 +61,19 @@ public class ClusteredCacheData<K,V> {
 	}
 	
 	public void putValue(V value) {
-		cluster.put(key, value,false);		
+		cluster.put(key, value, maxIdleMs, false);		
 	}
 	
 	public void putValueAsync(V value,AsyncCacheCallback<Void> callback) {
-		cluster.putAsync(key, value, callback);	
+		cluster.putAsync(key, value, maxIdleMs, callback);	
 	}
 	
 	public Boolean putIfAbsent(V value) {
-		return cluster.putIfAbsent(key, value, false);		
+		return cluster.putIfAbsent(key, value, maxIdleMs, false);		
 	}
 	
 	public void putIfAbsentAsync(V value,AsyncCacheCallback<Boolean> callback) {
-		cluster.putIfAbsentAsync(key, value, callback);		
+		cluster.putIfAbsentAsync(key, value, maxIdleMs, callback);		
 	}
 	
 	@SuppressWarnings("unchecked")

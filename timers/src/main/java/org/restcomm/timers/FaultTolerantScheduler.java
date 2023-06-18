@@ -191,7 +191,7 @@ public class FaultTolerantScheduler {
 			timerTaskData =  localTask.getData();
 		
 		if(timerTaskData==null) {
-			TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster);
+			TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster, null);
 			timerTaskData = timerTaskCacheData.getTaskData();
 		}
 		
@@ -277,8 +277,15 @@ public class FaultTolerantScheduler {
 			logger.debug("Scheduling task with id " + taskID);
 		}
 		
+		Long maxIdleMs=null;
+		if(taskData.getPeriod()==-1) {
+			maxIdleMs = (taskData.getStartTime() - System.currentTimeMillis()) * 2;
+			if(maxIdleMs<0)
+				maxIdleMs = 1000L;
+		}
+		
 		// store the task and data
-		final TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster);
+		final TimerTaskCacheData timerTaskCacheData = new TimerTaskCacheData(taskID, cluster, maxIdleMs);
 		if (timerTaskCacheData.putIfAbsent(taskData)) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Stored task data " + taskID);
@@ -329,7 +336,7 @@ public class FaultTolerantScheduler {
 		TimerTask task = localRunningTasks.get(taskID);
 		if (task != null) {
 			// remove task data
-			new TimerTaskCacheData(taskID, cluster).deleteElement();
+			new TimerTaskCacheData(taskID, cluster, null).deleteElement();
 
 			final SetTimerAfterTxCommitRunnable setAction = task.getSetTimerTransactionalAction();
 			if (setAction != null) {
@@ -389,7 +396,7 @@ public class FaultTolerantScheduler {
 								logger.debug("removing");
 								task = r.task;
 								// remove from cluster
-								new TimerTaskCacheData(taskID, cluster).deleteElement();
+								new TimerTaskCacheData(taskID, cluster, null).deleteElement();
 							}							
 						}											
 					}
@@ -410,7 +417,7 @@ public class FaultTolerantScheduler {
 		
 		localRunningTasks.remove(taskID);
 		if(removeFromCache)
-			new TimerTaskCacheData(taskID, cluster).deleteElement();
+			new TimerTaskCacheData(taskID, cluster, null).deleteElement();
 	}
 	
 	/**
@@ -502,7 +509,15 @@ public class FaultTolerantScheduler {
 				if(curr.getValue().getClusterAddress().equals(address)) {					
 					ClusteredID<?> taskID = curr.getKey();
 					curr.getValue().setClusterAddress(address);
-					TimerTaskCacheData cacheData=new TimerTaskCacheData(taskID, cluster);
+					
+					Long maxIdleMs=null;
+					if(curr.getValue().getPeriod()==-1) {
+						maxIdleMs = (curr.getValue().getStartTime() - System.currentTimeMillis()) * 2;
+						if(maxIdleMs<0)
+							maxIdleMs = 1000L;
+					}
+					
+					TimerTaskCacheData cacheData=new TimerTaskCacheData(taskID, cluster, maxIdleMs);
 					cacheData.setTaskData(curr.getValue());
 					recover(curr.getValue());
 				}

@@ -9,7 +9,7 @@
 	
 	<groupId>com.mobius-software.cluster</groupId>
 	<artifactId>cluster-parent</artifactId>
-	<version>8.0.0-37-SNAPSHOT</version>
+	<version>8.0.0-38-SNAPSHOT</version>
 	
 	<packaging>pom</packaging>
 	

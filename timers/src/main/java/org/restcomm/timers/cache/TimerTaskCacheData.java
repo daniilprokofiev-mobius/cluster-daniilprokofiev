@@ -40,8 +40,8 @@ public class TimerTaskCacheData extends ClusteredCacheData<ClusteredID<?>,TimerT
 	 * 
 	 */
 	//@SuppressWarnings("unchecked")
-	public TimerTaskCacheData(ClusteredID<?> taskID, RestcommCluster cluster) {
-		super(taskID,cluster);
+	public TimerTaskCacheData(ClusteredID<?> taskID, RestcommCluster cluster,Long maxIdleMs) {
+		super(taskID,cluster,maxIdleMs);
 	}
 
 	/**

@@ -198,17 +198,17 @@ public class CacheDataExecutorService {
         callback.awaitResult();
     }
 
-    public <T> void put(RestcommCluster cluster, Object key, T value) {
+    public <T> void put(RestcommCluster cluster, Object key, T value, Long maxIdleMs) {
         BlockingCallback<Void> callback = new BlockingCallback<Void>();
-        Command<Void> command = new PutCommand<T>(cluster, key, value, callback);
+        Command<Void> command = new PutCommand<T>(cluster, key, value, maxIdleMs, callback);
         callback.setCommand(command);
         executeCommand(command);
         callback.awaitResult();
     }
 
-    public <T> Boolean putIfAbsent(RestcommCluster cluster, Object key, T value) {
+    public <T> Boolean putIfAbsent(RestcommCluster cluster, Object key, T value, Long maxIdleMs) {
         BlockingCallback<Boolean> callback = new BlockingCallback<Boolean>();
-        Command<Boolean> command = new PutIfAbsentCommand<T>(cluster, key, value, callback);
+        Command<Boolean> command = new PutIfAbsentCommand<T>(cluster, key, value, maxIdleMs, callback);
         callback.setCommand(command);
         executeCommand(command);
         return callback.awaitResult();
@@ -569,17 +569,19 @@ public class CacheDataExecutorService {
 
     private class PutCommand<V> extends Command<Void> {
         private V value;
-
-        PutCommand(RestcommCluster cluster, Object key, V value, BlockingCallback<Void> callback) {
+        private Long maxIdleMs;
+        
+        PutCommand(RestcommCluster cluster, Object key, V value, Long maxIdleMs, BlockingCallback<Void> callback) {
             super(cluster, key, callback);
             this.value = value;
+            this.maxIdleMs = maxIdleMs;
         }
 
         @Override
         public void execute() {
         	if(!isCanceled) {
         		try {
-        			cluster.put(key, value, true);
+        			cluster.put(key, value, maxIdleMs, true);
         			callback.receiveResult(null);
 	        	}
 	        	catch(Exception e) {
@@ -593,10 +595,12 @@ public class CacheDataExecutorService {
     
     private class PutIfAbsentCommand<V> extends Command<Boolean> {
         private V value;
-
-        PutIfAbsentCommand(RestcommCluster cluster, Object key, V value, BlockingCallback<Boolean> callback) {
+        private Long maxIdleMs;
+        
+        PutIfAbsentCommand(RestcommCluster cluster, Object key, V value, Long maxIdleMs, BlockingCallback<Boolean> callback) {
             super(cluster, key, callback);
             this.value = value;
+            this.maxIdleMs = maxIdleMs;
         }
 
         @Override
@@ -604,7 +608,7 @@ public class CacheDataExecutorService {
         	if(!isCanceled) {
         		Boolean result=false;
         		try {
-        			result=cluster.putIfAbsent(key, value, true);        			
+        			result=cluster.putIfAbsent(key, value, maxIdleMs, true);        			
 	        	}
 	        	catch(Exception e) {
 	        		logger.error("An error occured while putting item," + e.getMessage(),e);

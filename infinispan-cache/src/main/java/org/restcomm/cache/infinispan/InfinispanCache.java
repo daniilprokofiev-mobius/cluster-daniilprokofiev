@@ -34,6 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -347,7 +348,7 @@ public class InfinispanCache {
     	
     	Object result = null;
     	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
-    		if(returnValue)
+    		if(returnValue)    			
     			result = getNonTreeCache().remove(key);
     		else
     			getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).remove(key);    		    		
@@ -380,7 +381,7 @@ public class InfinispanCache {
     	});
     }
     
-    public void put(RestcommCluster cluster,Object key,Object value,Boolean ignoreRollbackState) {
+    public void put(RestcommCluster cluster,Object key,Object value,Long maxIdleMs,Boolean ignoreRollbackState) {
     	if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
@@ -397,17 +398,25 @@ public class InfinispanCache {
          * ignore rolledback transaction
          */
             	
-    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {    		
-    		getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).put(key, value);    		    	
+    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) { 
+    		if(maxIdleMs!=null)
+    			getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).put(key, value, -1, TimeUnit.MILLISECONDS, maxIdleMs, TimeUnit.MILLISECONDS);
+    		else
+    			getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).put(key, value);    		
     	} else if(!isCurrentTransactionInRollback())
-    		cacheDataExecutorService.put(cluster, key, value);    	
+    		cacheDataExecutorService.put(cluster, key, value, maxIdleMs);
     }
     
-    public void putAsync(RestcommCluster cluster,Object key,Object value,AsyncCacheCallback<Void> callback) {
+    public void putAsync(RestcommCluster cluster,Object key,Object value,Long maxIdleMs,AsyncCacheCallback<Void> callback) {
     	if(!isAsync)
     		throw new RuntimeException("Sync cache does not supports async operations");
     	
-    	CompletableFuture<Object> future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).putAsync(key, value);
+    	CompletableFuture<Object> future;
+    	if(maxIdleMs!=null)
+    		future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).putAsync(key, value, -1, TimeUnit.MILLISECONDS, maxIdleMs, TimeUnit.MILLISECONDS);
+    	else
+    		future = getNonTreeCache().withFlags(Flag.IGNORE_RETURN_VALUES).putAsync(key, value);
+    	
     	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);
@@ -416,7 +425,7 @@ public class InfinispanCache {
     	});
     }
     
-    public Boolean putIfAbsent(RestcommCluster cluster,Object key,Object value,Boolean ignoreRollbackState) {
+    public Boolean putIfAbsent(RestcommCluster cluster,Object key,Object value, Long maxIdleMs, Boolean ignoreRollbackState) {
     	if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
@@ -433,19 +442,28 @@ public class InfinispanCache {
          * ignore rolledback transaction
          */
         
-    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {    		
-    		return getNonTreeCache().putIfAbsent(key, value)==null;    		    	
+    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {  
+    		if(maxIdleMs!=null)
+    			return getNonTreeCache().putIfAbsent(key, value, -1, TimeUnit.MILLISECONDS, maxIdleMs, TimeUnit.MILLISECONDS)==null;
+    		else
+    			return getNonTreeCache().putIfAbsent(key, value)==null;
+    		
     	} else if(!isCurrentTransactionInRollback())
-    		return cacheDataExecutorService.putIfAbsent(cluster, key, value);
+    		return cacheDataExecutorService.putIfAbsent(cluster, key, value, maxIdleMs);
     	
     	return false;
     }
     
-    public void putIfAbsentAsync(RestcommCluster cluster,Object key,Object value,AsyncCacheCallback<Boolean> callback) {
+    public void putIfAbsentAsync(RestcommCluster cluster,Object key,Object value,Long maxIdleMs,AsyncCacheCallback<Boolean> callback) {
     	if(!isAsync)
     		throw new RuntimeException("Sync cache does not supports async operations");
     	
-    	CompletableFuture<Object> future = getNonTreeCache().putIfAbsentAsync(key, value);
+    	CompletableFuture<Object> future;
+    	if(maxIdleMs!=null)
+    		future = getNonTreeCache().putIfAbsentAsync(key, value, -1, TimeUnit.MILLISECONDS, maxIdleMs, TimeUnit.MILLISECONDS);
+    	else
+    		future = getNonTreeCache().putIfAbsentAsync(key, value);
+    	
     	future.whenCompleteAsync((r, t) -> {
     		if(t!=null)
     			callback.onError(t);

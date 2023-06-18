@@ -112,7 +112,7 @@ public class NonReplicatedCacheTest
 			String key="testl_Key_" + (testDataStart + i+1);
 			expectedKeys.add(key);
 			expectedValues.add(new Integer(i+1));
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			cacheData.putValue(new Integer(i+1));
 		}
 		
@@ -120,7 +120,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -142,14 +142,14 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i+=2) 
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.removeElement()!=null);
 		}
 		
 		for(int i=0;i<10;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -157,7 +157,7 @@ public class NonReplicatedCacheTest
 		for(int i=1;i<10;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}
@@ -197,7 +197,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -229,7 +229,7 @@ public class NonReplicatedCacheTest
 			String key="testl_Key_" + (testDataStart + i+1);
 			expectedKeys.add(key);
 			expectedValues.add(new Integer(i+1));
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			cacheData.putValue(new Integer(i+1));
 		}
 		
@@ -237,7 +237,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -259,14 +259,14 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i+=2) 
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.removeElement()!=null);
 		}
 				
 		for(int i=0;i<10;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -274,7 +274,7 @@ public class NonReplicatedCacheTest
 		for(int i=1;i<10;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}
@@ -314,7 +314,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -322,7 +322,7 @@ public class NonReplicatedCacheTest
 		for(int i=1;i<10;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}
@@ -372,7 +372,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());			
 		}
@@ -408,7 +408,7 @@ public class NonReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testl_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 						cacheData.putValue(new Integer(firstItem+i+1));
 					}
 					
@@ -453,7 +453,7 @@ public class NonReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testl_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 						cacheData.removeElement();
 					}
 					
@@ -497,7 +497,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());			
 		}
@@ -527,7 +527,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -558,7 +558,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -589,7 +589,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -597,7 +597,7 @@ public class NonReplicatedCacheTest
 		for(int i=1;i<20;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}
@@ -646,7 +646,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());			
 		}
@@ -681,7 +681,7 @@ public class NonReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testl_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 						cacheData.putValue(new Integer(firstItem+i+1));
 					}
 					
@@ -729,7 +729,7 @@ public class NonReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testl_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 						cacheData.removeElement();
 					}
 					
@@ -776,7 +776,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -806,7 +806,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -814,7 +814,7 @@ public class NonReplicatedCacheTest
 		for(int i=10;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -853,7 +853,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -861,7 +861,7 @@ public class NonReplicatedCacheTest
 		for(int i=10;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -900,7 +900,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -908,7 +908,7 @@ public class NonReplicatedCacheTest
 		for(int i=10;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -969,7 +969,7 @@ public class NonReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testl_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 						cacheData.putValue(new Integer(firstItem+i+1));
 					}
 					
@@ -985,7 +985,7 @@ public class NonReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testl_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 						cacheData.removeElement();
 					}
 					
@@ -1016,7 +1016,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -1046,7 +1046,7 @@ public class NonReplicatedCacheTest
 		for(int i=0;i<20;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -1054,7 +1054,7 @@ public class NonReplicatedCacheTest
 		for(int i=1;i<20;i+=2)
 		{
 			String key="testl_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}

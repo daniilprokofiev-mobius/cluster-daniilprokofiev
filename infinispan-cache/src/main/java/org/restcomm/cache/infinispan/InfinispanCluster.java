@@ -276,6 +276,8 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 				// get current cluster members
 				currentView = localCache.getCurrentView();
 				
+				logger.info("setting listener for cache!");
+				
 				// start listening to cache events
 				if(this.useRemovalOnlyListener)
 					localCache.addListener(this);
@@ -360,31 +362,31 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
     }
     
     @Override
-    public void put(Object key,Object value,Boolean ignoreRollbackState) {
+    public void put(Object key,Object value,Long maxIdleMs,Boolean ignoreRollbackState) {
     	long startTime=System.currentTimeMillis();
-    	getCache().put(this, key, value, ignoreRollbackState);
+    	getCache().put(this, key, value, maxIdleMs, ignoreRollbackState);
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
     }
     
     @Override
-    public void putAsync(Object key,Object value,AsyncCacheCallback<Void> callback) {
+    public void putAsync(Object key,Object value,Long maxIdleMs,AsyncCacheCallback<Void> callback) {
     	long startTime=System.currentTimeMillis();
-    	getCache().putAsync(this, key, value, callback);
+    	getCache().putAsync(this, key, value, maxIdleMs, callback);
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
     }
     
     @Override
-    public Boolean putIfAbsent(Object key,Object value,Boolean ignoreRollbackState) {
+    public Boolean putIfAbsent(Object key,Object value,Long maxIdleMs,Boolean ignoreRollbackState) {
     	long startTime=System.currentTimeMillis();
-		Boolean result=getCache().putIfAbsent(this, key, value, ignoreRollbackState);  
+		Boolean result=getCache().putIfAbsent(this, key, value, maxIdleMs, ignoreRollbackState);  
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));
 		return result;
     }
     
     @Override
-    public void putIfAbsentAsync(Object key,Object value,AsyncCacheCallback<Boolean> callback) {
+    public void putIfAbsentAsync(Object key,Object value,Long maxIdleMs,AsyncCacheCallback<Boolean> callback) {
     	long startTime=System.currentTimeMillis();
-		getCache().putIfAbsentAsync(this, key, value, callback);  
+		getCache().putIfAbsentAsync(this, key, value, maxIdleMs, callback);  
 		updateStats(ClusterOperation.PUT, (System.currentTimeMillis()-startTime));		
     }
     
@@ -757,6 +759,10 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		@SuppressWarnings("rawtypes")
 		@CacheEntryRemoved
 		public void clusterCacheEntryRemoved(CacheEntryRemovedEvent event){
+			if (logger.isDebugEnabled()) {
+				logger.debug("cacheEntryRemoved : event[ "+ event +"]");
+			}
+
 			if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null && event.getOldValue()!=null )
 				 entryRemoved(event.getKey());
 		}
@@ -764,6 +770,10 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		@SuppressWarnings("rawtypes")
 		@CacheEntryCreated
 		public void clusterCacheEntryCreated(CacheEntryCreatedEvent event){
+			if (logger.isDebugEnabled()) {
+				logger.debug("cacheEntryCreated : event[ "+ event +"]");
+			}
+
 			if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null )
 				entryCreated(event.getKey());			
 		}
@@ -771,6 +781,10 @@ public class InfinispanCluster implements RestcommCluster,CacheListener {
 		@SuppressWarnings("rawtypes")
 		@CacheEntryModified
 		public void clusterCacheEntryModified(CacheEntryModifiedEvent event){
+			if (logger.isDebugEnabled()) {
+				logger.debug("cacheEntryModified : event[ "+ event +"]");
+			}
+
 			if (!event.isPre() && !event.isOriginLocal() && event.getKey() != null )
 				entryModified(event.getKey());			
 		}

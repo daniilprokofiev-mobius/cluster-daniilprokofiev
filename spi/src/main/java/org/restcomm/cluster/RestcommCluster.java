@@ -319,23 +319,23 @@ public interface RestcommCluster {
 	/**
 	 * Stores value to cache.
 	 */
-	public void put(Object key,Object value,Boolean ignoreRollbackState);
+	public void put(Object key,Object value, Long maxIdleMs, Boolean ignoreRollbackState);
 		
 	/**
 	 * Stores value to cache.
 	 */
-	public void putAsync(Object key,Object value,AsyncCacheCallback<Void> callback);
+	public void putAsync(Object key,Object value,Long maxIdleMs, AsyncCacheCallback<Void> callback);
 		
 	/**
 	 * Stores value to cache if key not present.
 	 * @return Boolean whether the operation succeeded
 	 */
-	public Boolean putIfAbsent(Object key,Object value,Boolean ignoreRollbackState);
+	public Boolean putIfAbsent(Object key,Object value,Long maxIdleMs, Boolean ignoreRollbackState);
 		
 	/**
 	 * Stores value to cache if key not present.
 	 */
-	public void putIfAbsentAsync(Object key,Object value,AsyncCacheCallback<Boolean> callback);
+	public void putIfAbsentAsync(Object key,Object value,Long maxIdleMs, AsyncCacheCallback<Boolean> callback);
 		
 	/**
 	 * Returns count of elements currently in cache.

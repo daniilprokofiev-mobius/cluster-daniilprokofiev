@@ -134,7 +134,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());			
 		}
@@ -176,7 +176,7 @@ public class ReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.putValue(new Integer(firstItem+i+1));
 					}
 					
@@ -214,12 +214,12 @@ public class ReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.removeElement();
 					}
 					
 					String key="Key_" + (testDataStart + firstItem+"AAAAA");
-					ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+					ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 					cacheData.removeElement();
 					
 					waitSemaphore.release();
@@ -255,7 +255,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());			
 		}
@@ -285,7 +285,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -315,7 +315,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -345,7 +345,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i+=2)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -353,7 +353,7 @@ public class ReplicatedCacheTest
 		for(int i=1;i<20;i+=2)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}
@@ -418,7 +418,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());			
 		}
@@ -459,7 +459,7 @@ public class ReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.putValue(new Integer(firstItem+i+1));
 					}
 					
@@ -500,7 +500,7 @@ public class ReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.removeElement();
 					}
 					
@@ -540,7 +540,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -570,7 +570,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -578,7 +578,7 @@ public class ReplicatedCacheTest
 		for(int i=10;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -617,7 +617,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -625,7 +625,7 @@ public class ReplicatedCacheTest
 		for(int i=10;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -664,7 +664,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<10;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -672,7 +672,7 @@ public class ReplicatedCacheTest
 		for(int i=10;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -755,7 +755,7 @@ public class ReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.putValue(new Integer(firstItem+i+1));
 					}
 					
@@ -771,7 +771,7 @@ public class ReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.removeElement();
 					}
 					
@@ -802,7 +802,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),new Integer(i+1));
 		}
@@ -832,7 +832,7 @@ public class ReplicatedCacheTest
 		for(int i=0;i<20;i+=2)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertFalse(cacheData.exists());
 			assertNull(cacheData.getValue());
 		}
@@ -840,7 +840,7 @@ public class ReplicatedCacheTest
 		for(int i=1;i<20;i+=2)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			assertTrue(cacheData.exists());
 			assertEquals(cacheData.getValue(),expectedValues.get(i));
 		}

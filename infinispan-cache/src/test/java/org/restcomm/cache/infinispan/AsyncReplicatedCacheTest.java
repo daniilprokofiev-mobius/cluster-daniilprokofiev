@@ -187,7 +187,7 @@ public class AsyncReplicatedCacheTest
 					for(int i=0;i<10;i++)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.putValueAsync(new Integer(firstItem+i+1),callback);
 					}
 					
@@ -223,7 +223,7 @@ public class AsyncReplicatedCacheTest
 					for(int i=0;i<10;i+=2)
 					{
 						String key="testr_Key_" + (testDataStart + firstItem+i+1);
-						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster);
+						ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, localCluster, null);
 						cacheData.removeElementAsync(removeCallback);					
 					}
 					
@@ -280,7 +280,7 @@ public class AsyncReplicatedCacheTest
 		for(int i=0;i<20;i++)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			cacheData.existsAsync(existsCallback);
 			
 			final Integer currValue=i;
@@ -353,7 +353,7 @@ public class AsyncReplicatedCacheTest
 		for(int i=0;i<20;i+=2)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			cacheData.existsAsync(nonExistsCallback);
 			cacheData.getValueAsync(new AsyncCacheCallback<Integer>() {
 				
@@ -376,7 +376,7 @@ public class AsyncReplicatedCacheTest
 		for(int i=1;i<20;i+=2)
 		{
 			String key="testr_Key_" + (testDataStart + i+1);
-			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster);
+			ClusteredCacheData<String, Integer> cacheData=new ClusteredCacheData<String, Integer>(key, cluster, null);
 			cacheData.existsAsync(existsCallback);
 			final Integer currValue=i;
 			cacheData.getValueAsync(new AsyncCacheCallback<Integer>() {
