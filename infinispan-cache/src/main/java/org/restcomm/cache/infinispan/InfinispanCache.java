@@ -220,7 +220,12 @@ public class InfinispanCache {
             	cache=this.jbossCache;  
             	
             	if(!localMode) {
-            		counterManager = EmbeddedCounterManagerFactory.asCounterManager(jBossCacheContainer);                                
+            		try {
+            			counterManager = EmbeddedCounterManagerFactory.asCounterManager(jBossCacheContainer);
+            		}
+            		catch(NullPointerException ex) {
+            			logger.warn("Counter Manager is null, will use local counters");
+            		}
             	}
             }
             
