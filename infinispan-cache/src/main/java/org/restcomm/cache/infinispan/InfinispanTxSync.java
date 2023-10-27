@@ -30,11 +30,11 @@ import javax.transaction.TransactionManager;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.restcomm.cache.infinispan.tree.Node;
+import org.restcomm.cluster.CacheDataExecutorService.CommonCommand;
 import org.restcomm.cluster.RestcommCluster;
 import org.restcomm.cluster.TreeTransactionContextThreadLocal;
 import org.restcomm.cluster.TreeTxState;
-import org.restcomm.cache.infinispan.tree.Node;
-import org.restcomm.cluster.CacheDataExecutorService.CommonCommand;
 import org.restcomm.cluster.data.ClusterOperation;
 import org.restcomm.cluster.data.TreeSegment;
 
@@ -89,10 +89,10 @@ public class InfinispanTxSync implements Synchronization {
 		}	
 	}
 	
-	private void processChilds(Node parent,ConcurrentHashMap<TreeSegment<?>, TreeTxState> currLevel,TransactionManager txManager) {		
+	private void processChilds(Boolean isRoot,Node parent,ConcurrentHashMap<TreeSegment<?>, TreeTxState> currLevel,TransactionManager txManager) {		
 		Iterator<Entry<TreeSegment<?>, TreeTxState>> iterator=currLevel.entrySet().iterator();
 		while(iterator.hasNext()) {
-			if(parent==null) {
+			if(isRoot && parent==null) {
 				//the transaction is created for each root node separately since each parent node may fall into
 				//different tree bucket. as result when thread A and thread B both has root entities for buckets 1 and 2 , but
 				//will process them in reversed order , then the deadlock may occur. Also this way only single root segment
@@ -142,14 +142,14 @@ public class InfinispanTxSync implements Synchronization {
 					//first we need to create all the elements on level and only after that process with childs
 					ConcurrentHashMap<TreeSegment<?>, TreeTxState> currMap=currEntry.getValue().getAllChilds();
 					if(currMap!=null && currMap.size()>0) {
-						processChilds(currObject, currMap,txManager);
+						processChilds(false, currObject, currMap,txManager);
 					}
 				}
 			} catch(Exception ex) {
 				logger.error("An error occured while commiting infinispan changes," + ex.getMessage(),ex);
 			}
 			
-			if(parent==null) {
+			if(isRoot && parent==null) {
 				try {
 					txManager.commit();
 				}
@@ -180,7 +180,7 @@ public class InfinispanTxSync implements Synchronization {
 		@Override
 		public void execute() {
 			if(txChangedEntities.size()>0) {							
-				processChilds(null, txChangedEntities, txManager);									
+				processChilds(true, null, txChangedEntities, txManager);									
 			}
 			releaseSemaphore.release();
 		}

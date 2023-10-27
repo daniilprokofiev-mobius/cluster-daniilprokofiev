@@ -934,6 +934,7 @@ public class InfinispanCache {
 						
 						if(state.isPreloaded() && state.getAllChilds()!=null && state.getAllChilds().size()>0)
 							return true;
+						
 						break;
 				}	        		        	
 			}
@@ -986,7 +987,7 @@ public class InfinispanCache {
 		if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
-    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
+		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
 			if(!ignoreRollbackState && !isTransactionUnavailable()) {
 				registerTxForChanges(cluster);
     			TreeTxState txState=retreiveTxState(key,true);
@@ -1035,7 +1036,7 @@ public class InfinispanCache {
 		if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
-    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
+		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
 			if(!ignoreRollbackState && !isTransactionUnavailable()) {
 				registerTxForChanges(cluster);
     			TreeTxState txState=retreiveTxState(key,true);
@@ -1084,7 +1085,7 @@ public class InfinispanCache {
 		if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
-    	Boolean result=false;
+		Boolean result=false;
 		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
     		if(!ignoreRollbackState && !isTransactionUnavailable()) {
 	    		registerTxForChanges(cluster);
@@ -1139,7 +1140,7 @@ public class InfinispanCache {
 		if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
-    	if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
+		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
     		if(!ignoreRollbackState && !isTransactionUnavailable()) {
 	    		registerTxForChanges(cluster);
 	    		TreeTxState currState=retreiveTxState(key,true);
@@ -1198,27 +1199,27 @@ public class InfinispanCache {
 		if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
-    	Boolean result=false;
+		Boolean result=false;
 		if (ignoreRollbackState || !isCurrentTransactionInRollbackOrCommitted()) {
-    		if(!ignoreRollbackState && !isTransactionUnavailable()) {
-    			registerTxForChanges(cluster);
+			if(!ignoreRollbackState && !isTransactionUnavailable()) {
+	        	registerTxForChanges(cluster);
 	    		TreeTxState currState=retreiveTxState(key,true);
     			if(currState==null)
+    		    	return false;
+    			
+    	    	if(currState.getOperation()!=WriteOperation.REMOVE && currState.getOperation()!=WriteOperation.REMOVE_VALUE && currState.getOperation()!=WriteOperation.NOOP)
     				return false;
     			
-    			if(currState.getOperation()!=WriteOperation.REMOVE && currState.getOperation()!=WriteOperation.REMOVE_VALUE && currState.getOperation()!=WriteOperation.NOOP)
+		    	if(currState.getOperation()==WriteOperation.NOOP && treeExists(cluster, key, ignoreRollbackState))
     				return false;
     			
-    			if(currState.getOperation()==WriteOperation.NOOP && treeExists(cluster, key, ignoreRollbackState))
-    				return false;
-    			
-    			Boolean createdInThisTX=(currState.getOperation()==WriteOperation.NOOP || currState.createdInThisTX());
+		    	Boolean createdInThisTX=(currState.getOperation()==WriteOperation.NOOP || currState.createdInThisTX());
     			currState.updateOperation(createdInThisTX,WriteOperation.CREATE, currState.getData());
     			currState.setIsPreloaded(true);
     			result=true;    			
     		} else {
-    			if(!useExecutor) {
-    				Node node=getTreeCache().getNode(key.getParent());
+    	    	if(!useExecutor) {
+			    	Node node=getTreeCache().getNode(key.getParent());
         			if(node!=null)  {
         				node = node.addChild(key, false);
         				result=(node!=null);
@@ -1390,7 +1391,7 @@ public class InfinispanCache {
 		if(isAsync)
     		throw new RuntimeException("Async cache does not supports sync operations");
     	
-    	if(isTransactionUnavailable())
+		if(isTransactionUnavailable())
 			return;
 		
 		registerTxForChanges(cluster);
