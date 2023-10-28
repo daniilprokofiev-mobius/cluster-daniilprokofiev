@@ -19,7 +19,9 @@
 
 package org.restcomm.cluster;
 
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.restcomm.cluster.data.TreeSegment;
 import org.restcomm.cluster.data.WriteOperation;
@@ -70,6 +72,26 @@ public class TreeTxState {
 	
 	public ConcurrentHashMap<TreeSegment<?>, TreeTxState> getAllChilds() {
 		return childs;
+	}
+	
+	public boolean hasRealChilds() {
+		if(childs==null || childs.size()==0)
+			return false;
+		
+		ConcurrentLinkedQueue<Entry<TreeSegment<?>, TreeTxState>> pendingItems=new ConcurrentLinkedQueue<Entry<TreeSegment<?>, TreeTxState>>();
+		pendingItems.addAll(childs.entrySet());
+		while(pendingItems.size()>0) {			
+			Entry<TreeSegment<?>, TreeTxState> currEntry = pendingItems.poll();
+			if(currEntry!=null) {
+				if(currEntry.getValue()!=null && currEntry.getValue().getOperation()!=null && currEntry.getValue().getOperation()!=WriteOperation.NOOP)
+					return true;
+				
+				if(currEntry.getValue()!=null && currEntry.getValue().getAllChilds()!=null && currEntry.getValue().getAllChilds().size()>0)
+					pendingItems.addAll(currEntry.getValue().getAllChilds().entrySet());
+			}
+		}
+		
+		return false;
 	}
 	
 	public void clearChilds() {

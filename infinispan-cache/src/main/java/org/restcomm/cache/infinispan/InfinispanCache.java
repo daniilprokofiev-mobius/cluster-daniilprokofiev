@@ -932,7 +932,7 @@ public class InfinispanCache {
 						if(state.getData()!=null)
 							return true;
 						
-						if(state.isPreloaded() && state.getAllChilds()!=null && state.getAllChilds().size()>0)
+						if(state.isPreloaded() && state.hasRealChilds())
 							return true;
 						
 						break;
