@@ -28,7 +28,7 @@
 		<compile.source>1.8</compile.source>
 		<version.infinispan>9.4.14.Final</version.infinispan>
 		<version.transactions>1.1</version.transactions>
-		<version.kryo>5.6.0</version.kryo>
+		<version.kryo>5.5.0</version.kryo>
 		<version.log4j>2.19.0</version.log4j>
 		<version.junit>4.12</version.junit>	
 		<version.netty>4.1.63.Final</version.netty>			
