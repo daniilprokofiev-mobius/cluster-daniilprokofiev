@@ -141,7 +141,6 @@
 					<docencoding>UTF-8</docencoding>
 					<breakiterator>true</breakiterator>
 					<version>true</version>
-					<author>true</author>
 					<keywords>true</keywords>
 					<stylesheetfile>${basedir}/javadoc/stylesheet.css</stylesheetfile>
 					<javadocDirectory>${basedir}/javadoc</javadocDirectory>
