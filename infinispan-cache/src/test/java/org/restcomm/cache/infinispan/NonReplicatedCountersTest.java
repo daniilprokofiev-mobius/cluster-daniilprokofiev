@@ -93,9 +93,9 @@ public class NonReplicatedCountersTest
 	@Test
 	public void testCounters() throws NotSupportedException, SystemException, SecurityException, IllegalStateException, RollbackException, HeuristicMixedException, HeuristicRollbackException
 	{
-		assertEquals(cluster.getAtomicValue("testkey"),0L);
-		assertEquals(cluster.addAndGetAtomicValue("testkey",2L),2L);
+		assertEquals(cluster.getAtomicValue("testkey"),new Long(0L));
+		assertEquals(cluster.addAndGetAtomicValue("testkey",2L),new Long(2L));
 		assertTrue(cluster.compareAndSetAtomicValue("testkey",2L,5L));
-		assertEquals(cluster.getAtomicValue("testkey"),5L);		
+		assertEquals(cluster.getAtomicValue("testkey"),new Long(5L));		
 	}
 }
