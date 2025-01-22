@@ -149,7 +149,7 @@ public class InfinispanCache {
         Thread.currentThread().setContextClassLoader(currentClassLoader);
     }
 
-    public static DefaultCacheManager initContainer(String clusterName, TransactionManager txMgr,Serializer serializer,Boolean isAsync, Boolean isReplicated,Boolean isParititioned,Integer copies,Integer aquireTimeout) {
+    public static DefaultCacheManager initContainer(String clusterName, TransactionManager txMgr,Serializer serializer,Boolean isAsync, Boolean isReplicated,Boolean isParititioned,Integer copies,Integer aquireTimeout, Long maxIdleMs) {
     	DefaultCacheManager jBossCacheContainer;
     	TransactionManagerLookup txLookup=new TransactionManagerLookup() {				
 			@Override
@@ -159,24 +159,28 @@ public class InfinispanCache {
 		};
 		
 		if(isReplicated) {
-			Configuration defaultConfig;
+			ConfigurationBuilder defaultConfig = new ConfigurationBuilder();
+			if(maxIdleMs!=null)
+				defaultConfig.expiration().maxIdle(maxIdleMs, TimeUnit.SECONDS);
+			
 			if(isAsync) {
 				if(isParititioned)
-					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.DIST_ASYNC).hash().numOwners(copies).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+					defaultConfig.clustering().cacheMode(CacheMode.DIST_ASYNC).hash().numOwners(copies).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).expiration().jmxStatistics().disable();
 				else
-					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.REPL_ASYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+					defaultConfig.clustering().cacheMode(CacheMode.REPL_ASYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
 			} 
 			else if(txMgr==null) {
 				if(isParititioned)				
-					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+					defaultConfig.clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable();
 				else
-					defaultConfig = new ConfigurationBuilder().clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+					defaultConfig.clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionMode(TransactionMode.NON_TRANSACTIONAL).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable();
 			}
 			else if(isParititioned)				
-				defaultConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+				defaultConfig.invocationBatching().enable().clustering().cacheMode(CacheMode.DIST_SYNC).hash().numOwners(copies).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable();
 			else
-				defaultConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable().build();
+				defaultConfig.invocationBatching().enable().clustering().cacheMode(CacheMode.REPL_SYNC).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).jmxStatistics().disable();
 						
+			
 			GlobalConfigurationBuilder gcBuilder=new GlobalConfigurationBuilder();	
 			CounterManagerConfigurationBuilder counterBuilder = gcBuilder.addModule(CounterManagerConfigurationBuilder.class);
 		    counterBuilder.numOwner(copies).reliability(Reliability.AVAILABLE);
@@ -194,7 +198,7 @@ public class InfinispanCache {
 			gcBuilder.serialization().addAdvancedExternalizer(StringAndClusteredIDKey.EXTERNALIZER_ID, new ExternalizableExternalizer(StringAndClusteredIDKey.class,StringAndClusteredIDKey.EXTERNALIZER_ID));
 			gcBuilder.serialization().addAdvancedExternalizer(MultiStringKey.EXTERNALIZER_ID, new ExternalizableExternalizer(MultiStringKey.class,MultiStringKey.EXTERNALIZER_ID));			
 			GlobalConfiguration globalConfig = gcBuilder.build();			
-			jBossCacheContainer=new DefaultCacheManager(globalConfig, defaultConfig, false);
+			jBossCacheContainer=new DefaultCacheManager(globalConfig, defaultConfig.build(), false);
 		}
 		else {				
 			Configuration defaultLocalConfig = new ConfigurationBuilder().invocationBatching().enable().clustering().cacheMode(CacheMode.LOCAL).transaction().transactionManagerLookup(txLookup).lockingMode(LockingMode.PESSIMISTIC).locking().isolationLevel(IsolationLevel.READ_COMMITTED).lockAcquisitionTimeout(aquireTimeout).useLockStriping(false).jmxStatistics().disable().build();

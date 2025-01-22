@@ -73,11 +73,11 @@ public class ReplicatedCacheJavaSerializerTest
 		IDGenerator<UUID> generator=new UUIDGenerator();
 	    
 		CacheExecutorConfiguration configuration=new CacheExecutorConfiguration(16, 1000L, 1000L);
-		factory=new InfinispanCacheFactory("mobius", transactionManager, new JavaSerializer(Thread.currentThread().getContextClassLoader()), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
+		factory=new InfinispanCacheFactory("mobius", transactionManager, new JavaSerializer(Thread.currentThread().getContextClassLoader()), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true, null);
 		cluster=factory.getCluster("testrj", false);
 		cluster.startCluster(true);		
 		
-		factory2=new InfinispanCacheFactory("mobius", transactionManager, new JavaSerializer(Thread.currentThread().getContextClassLoader()), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
+		factory2=new InfinispanCacheFactory("mobius", transactionManager, new JavaSerializer(Thread.currentThread().getContextClassLoader()), generator, Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true, null);
 		cluster2=factory2.getCluster("testrj", false);
 		cluster2.startCluster(true);
 	}

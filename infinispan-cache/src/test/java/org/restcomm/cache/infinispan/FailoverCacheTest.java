@@ -55,11 +55,11 @@ public class FailoverCacheTest
 	    IDGenerator<UUID> generator=new UUIDGenerator();
 		
 	    CacheExecutorConfiguration configuration=new CacheExecutorConfiguration(16, 1000L, 1000L);
-		InfinispanCacheFactory factory=new InfinispanCacheFactory("mobius", transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true),generator,Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
+		InfinispanCacheFactory factory=new InfinispanCacheFactory("mobius", transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true),generator,Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true, null);
 		RestcommCluster cluster=factory.getCluster("testf", false);
 		cluster.startCluster(true);		
 		
-		InfinispanCacheFactory factory2=new InfinispanCacheFactory("mobius", transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true),generator,Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true);
+		InfinispanCacheFactory factory2=new InfinispanCacheFactory("mobius", transactionManager, new KryoSerializer(Thread.currentThread().getContextClassLoader(),new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()),true),generator,Thread.currentThread().getContextClassLoader(), new CacheDataExecutorService(configuration, generator, Thread.currentThread().getContextClassLoader()), 1000, false, true, false, 1, true, null);
 		RestcommCluster cluster2=factory2.getCluster("testf", false);
 		cluster2.startCluster(true);
 	    
