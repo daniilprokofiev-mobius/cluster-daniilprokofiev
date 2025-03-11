@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.mobius-software</groupId>
 		<artifactId>mobius-public-parent</artifactId>
-		<version>1.0.9</version>
+		<version>1.0.10</version>
 	</parent>
 	
 	<groupId>com.mobius-software.cluster</groupId>
@@ -25,7 +25,6 @@
   </scm>
 
 	<properties>
-		<compile.source>1.8</compile.source>
 		<version.infinispan>9.4.14.Final</version.infinispan>
 		<version.transactions>1.1</version.transactions>
 		<version.kryo>5.5.0</version.kryo>
@@ -42,6 +41,41 @@
 	</modules>
 
 	<profiles>
+		<profile>
+			<id>java8</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+						<configuration>
+							<source>1.8</source>
+							<target>1.8</target>
+							<debug>1.8</debug>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>java11</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-compiler-plugin</artifactId>
+						<configuration>
+							<target>11</target>
+							<source>11</source>
+							<debug>11</debug>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<profile>
 			<id>maven-release</id>
 			<build>
@@ -114,16 +148,7 @@
 					<resolveTransitiveDependencies>true</resolveTransitiveDependencies>
 					<eclipseProjectName>restcomm-cluster</eclipseProjectName>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<source>${compile.source}</source>
-					<target>${compile.source}</target>
-					<debug>${compile.debug}</debug>
-				</configuration>
-			</plugin>
+			</plugin>			
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
