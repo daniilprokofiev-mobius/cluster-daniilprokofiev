@@ -234,5 +234,17 @@
 		<!-- the place to extra repos -->
 	</repositories>
 	
+	<distributionManagement>
+		<repository>
+			<id>mobius-public-releases-repository</id>
+			<name>Mobius Public Releases Repository</name>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+		<snapshotRepository>
+			<id>mobius-publis-snapshots-repository</id>
+			<name>Mobius Public Snapshots Repository</name>
+			<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+		</snapshotRepository>
+	</distributionManagement>
 	
 </project>
